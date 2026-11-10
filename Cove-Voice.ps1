@@ -1,5 +1,11 @@
-param([switch]$SmokeTest)
+param([switch]$SmokeTest,[switch]$ListenOnStart)
 $ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'CoveInstance.ps1')
+$instanceChannel=$null
+if(-not $SmokeTest){
+ $instanceChannel=Open-CoveInstanceChannel -Identity $PSScriptRoot -Listen:$ListenOnStart
+ if($instanceChannel.AlreadyRunning){Close-CoveInstanceChannel $instanceChannel;return}
+}
 . (Join-Path $PSScriptRoot 'CoveApps.ps1')
 . (Join-Path $PSScriptRoot 'CoveAppPanel.ps1')
 Add-Type -AssemblyName PresentationFramework,PresentationCore,WindowsBase,System.Speech,System.Security,System.Net.Http,System.Web.Extensions
@@ -41,7 +47,7 @@ if (-not $script:key -and (Test-Path -LiteralPath $keyFile)) {
  try { $raw=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($keyFile),$null,[Security.Cryptography.DataProtectionScope]::CurrentUser); $script:key=[Text.Encoding]::UTF8.GetString($raw); [Array]::Clear($raw,0,$raw.Length) } catch {}
 }
 $window=New-Object Windows.Window
-$window.Title='Cove';$window.Width=164;$window.Height=172
+$window.Title='Cove';$window.Width=176;$window.Height=192
 $window.WindowStyle='None';$window.ResizeMode='NoResize';$window.AllowsTransparency=$true
 $window.Background='Transparent';$window.Topmost=$false;$window.ShowActivated=$false
 $window.FontFamily='Segoe UI'
@@ -51,27 +57,58 @@ $theme=[Windows.Markup.XamlReader]::Parse([IO.File]::ReadAllText((Join-Path $PSS
 $window.Resources.MergedDictionaries.Add($theme)
 $panel=New-Object Windows.Controls.StackPanel
 $orb=New-Object Windows.Controls.Button
-$orb.Width=68;$orb.Height=68;$orb.Margin='12,12,12,8';$orb.Content='cove';$orb.Foreground='#EBF8FF';$orb.FontSize=14
+$orb.Width=88;$orb.Height=88;$orb.Margin='16,18,16,12';$orb.Content='';$orb.Foreground='#EBF8FF';$orb.FontSize=14
 $orb.Template=[Windows.Markup.XamlReader]::Parse(@'
-<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Button"><Grid><Ellipse Fill="{TemplateBinding Background}" Stroke="#80C7E3" StrokeThickness="1.3"/><Ellipse Margin="6" Stroke="#305C79" StrokeThickness="0.8"/><Ellipse Margin="9" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush Center="0.3,0.15" GradientOrigin="0.25,0.1" RadiusX="0.8" RadiusY="0.8"><GradientStop Color="#3868BBE8" Offset="0"/><GradientStop Color="#00172940" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid></ControlTemplate>
+<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="Button">
+<Grid RenderTransformOrigin="0.5,0.5">
+ <Grid.RenderTransform><ScaleTransform x:Name="Breath"/></Grid.RenderTransform>
+ <Ellipse Fill="{TemplateBinding Background}"/>
+ <Ellipse><Ellipse.Fill><RadialGradientBrush Center="0.32,0.22" GradientOrigin="0.25,0.15" RadiusX="0.85" RadiusY="0.85"><GradientStop Color="#D0E9FFF9" Offset="0"/><GradientStop Color="#7056B8DD" Offset="0.35"/><GradientStop Color="#30152955" Offset="0.72"/><GradientStop Color="#C0091128" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
+ <Ellipse Margin="1" StrokeThickness="1"><Ellipse.Stroke><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#B3DFFCF9" Offset="0"/><GradientStop Color="#125AA9DF" Offset="0.55"/><GradientStop Color="#707D88EE" Offset="1"/></LinearGradientBrush></Ellipse.Stroke></Ellipse>
+ <Ellipse Width="48" Height="22" VerticalAlignment="Top" Margin="0,9,9,0" Opacity="0.35"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#E4FFF9"/><GradientStop Color="#00E4FFF9" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
+ <Ellipse Margin="4" StrokeThickness="1.4" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+ <Ellipse.RenderTransform><RotateTransform x:Name="HaloTurn"/></Ellipse.RenderTransform>
+ <Ellipse.Stroke><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#00A7F4EC" Offset="0.15"/><GradientStop Color="#00A7F4EC" Offset="0.48"/><GradientStop Color="#B0C2FFF6" Offset="0.8"/><GradientStop Color="#00A7F4EC" Offset="1"/></LinearGradientBrush></Ellipse.Stroke>
+</Ellipse>
+<Grid Width="58" Height="30" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+ <Grid.RenderTransform><ScaleTransform x:Name="VoiceWave" ScaleY="0.55"/></Grid.RenderTransform>
+ <Path Data="M 3,15 C 12,-1 16,31 25,15 S 38,-1 45,15 S 51,23 55,15" Stroke="#55B9F5EC" StrokeThickness="4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+ <Path Data="M 3,15 C 12,-1 16,31 25,15 S 38,-1 45,15 S 51,23 55,15" Stroke="#DEFDF8" StrokeThickness="1.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+</Grid>
+ <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+</Grid>
+<ControlTemplate.Triggers>
+ <EventTrigger RoutedEvent="FrameworkElement.Loaded"><BeginStoryboard><Storyboard>
+  <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleX" From="0.96" To="1" Duration="0:0:2.4" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+  <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleY" From="0.96" To="1" Duration="0:0:2.4" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+  <DoubleAnimation Storyboard.TargetName="HaloTurn" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:12" RepeatBehavior="Forever"/>
+  <DoubleAnimation Storyboard.TargetName="VoiceWave" Storyboard.TargetProperty="ScaleY" From="0.35" To="0.65" Duration="0:0:1.8" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+ </Storyboard></BeginStoryboard></EventTrigger>
+ <Trigger Property="Tag" Value="Active">
+  <Trigger.EnterActions><BeginStoryboard x:Name="ActiveWave"><Storyboard><DoubleAnimation Storyboard.TargetName="VoiceWave" Storyboard.TargetProperty="ScaleY" From="0.5" To="1.15" Duration="0:0:0.55" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation></Storyboard></BeginStoryboard></Trigger.EnterActions>
+  <Trigger.ExitActions><RemoveStoryboard BeginStoryboardName="ActiveWave"/></Trigger.ExitActions>
+ </Trigger>
+ <Trigger Property="IsMouseOver" Value="True"><Setter Property="Opacity" Value="0.9"/></Trigger>
+</ControlTemplate.Triggers>
+</ControlTemplate>
 '@)
 $glow=New-Object Windows.Media.Effects.DropShadowEffect
-$glow.Color=[Windows.Media.ColorConverter]::ConvertFromString('#64B6DA');$glow.ShadowDepth=0;$glow.BlurRadius=16;$glow.Opacity=0.45;$orb.Effect=$glow
+$glow.Color=[Windows.Media.ColorConverter]::ConvertFromString('#64B6DA');$glow.ShadowDepth=0;$glow.BlurRadius=22;$glow.Opacity=0.32;$orb.Effect=$glow
 $status=New-Object Windows.Controls.TextBlock
 $status.Foreground='#CBDCEB';$status.TextAlignment='Center';$status.TextWrapping='Wrap';$status.Padding='8,5';$status.FontSize=10
 $statusPill=New-Object Windows.Controls.Border
-$statusPill.Background='#EA142131';$statusPill.CornerRadius='12';$statusPill.Margin='5,0,5,0';$statusPill.Child=$status
+$statusPill.Background='#E6101722';$statusPill.CornerRadius='14';$statusPill.Margin='8,0,8,0';$statusPill.Padding='5,2';$statusPill.Child=$status
 $openChat=New-Object Windows.Controls.Button
-$openChat.Content='Conversar';$openChat.Margin='26,6,26,0';$openChat.Padding='10,5';$openChat.FontSize=11
+$openChat.Content='Abrir conversa';$openChat.Background='Transparent';$openChat.BorderThickness='0';$openChat.Foreground='#A6B8CD';$openChat.Margin='22,4,22,0';$openChat.Padding='10,5';$openChat.FontSize=11
 $panel.Children.Add($orb)|Out-Null;$panel.Children.Add($statusPill)|Out-Null;$panel.Children.Add($openChat)|Out-Null;$window.Content=$panel
 $status.Add_MouseLeftButtonDown({$window.DragMove()})
 $orb.ToolTip='Clique para falar. Arraste pelo texto. Botao direito: pausar ou sair.'
 $chat=[Windows.Markup.XamlReader]::Parse(@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Conversa com Cove" Width="480" Height="580" WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent" Foreground="#E6EEF8" FontFamily="Segoe UI">
-<Border CornerRadius="24" Background="#0E1927" BorderBrush="#2A3B50" BorderThickness="1" Padding="22"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-<Grid x:Name="DragHeader" Background="Transparent" Margin="0,0,0,20"><StackPanel><TextBlock Text="cove" FontSize="25" FontWeight="SemiBold"/><TextBlock Text="Conversa e apps por voz - v2" FontSize="12" Foreground="#91A6BE" Margin="0,4,0,0"/></StackPanel><StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"><Button x:Name="Minimize" Content="&#x2212;" Width="32" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip="Minimizar"/><Button x:Name="CloseChat" Content="&#x00D7;" Width="32" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip="Fechar conversa"/></StackPanel></Grid>
-<TextBox x:Name="Transcript" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" BorderThickness="0" FontSize="14"/>
-<DockPanel Grid.Row="2" Margin="0,16,0,0"><Button x:Name="Send" Content="Enviar" DockPanel.Dock="Right" Background="#235D74" BorderBrush="#397D91" Padding="16,10"/><TextBox x:Name="Prompt" Margin="0,0,8,0" ToolTip="Escreva uma mensagem" VerticalContentAlignment="Center"/></DockPanel>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Conversa com Cove" Width="500" Height="620" WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent" Foreground="#E6EEF8" FontFamily="Segoe UI">
+<Border CornerRadius="28" Background="#10151F" BorderBrush="#293241" BorderThickness="1" Padding="28"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+<Grid x:Name="DragHeader" Background="Transparent" Margin="0,0,0,20"><StackPanel><TextBlock Text="cove" FontSize="28" FontWeight="Light"/><TextBlock Text="Um instante. Uma conversa." FontSize="12" Foreground="#91A6BE" Margin="0,4,0,0"/></StackPanel><StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"><Button x:Name="Minimize" Content="&#x2212;" Width="32" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip="Minimizar"/><Button x:Name="CloseChat" Content="&#x00D7;" Width="32" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip="Fechar conversa"/></StackPanel></Grid>
+<TextBox x:Name="Transcript" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" BorderThickness="0" FontSize="14" Padding="16" Background="#151D29"/>
+<DockPanel Grid.Row="2" Margin="0,16,0,0"><Button x:Name="Send" Content="Enviar" DockPanel.Dock="Right" Background="#235D74" BorderBrush="#397D91" Padding="16,10"/><TextBox x:Name="Prompt" Margin="0,0,8,0" ToolTip="Escreva uma mensagem" MinHeight="44" VerticalContentAlignment="Center"/></DockPanel>
 <StackPanel Grid.Row="3" Margin="0,14,0,0"><WrapPanel><Button x:Name="Configure" Content="Ajustes" Padding="11,7" Background="Transparent"/><Button x:Name="Mute" Content="Pausar microfone" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/><Button x:Name="Clear" Content="Limpar" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/><Button x:Name="Apps" Content="Apps" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/></WrapPanel><TextBlock x:Name="Heard" Text="Diga Cove e espere ficar verde, ou clique na bolinha." TextWrapping="Wrap" Foreground="#91A6BE" FontSize="11" Margin="1,13,0,0"/></StackPanel>
 </Grid></Border></Window>
 '@)
@@ -116,7 +153,7 @@ function Start-CoveTranscription([byte[]]$pcm){
 }
 function Show-Settings {
  $dialog=[Windows.Markup.XamlReader]::Parse(@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Ajustes do Cove" Width="460" SizeToContent="Height" MaxHeight="760" WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent" Foreground="#E6EEF8" FontFamily="Segoe UI" ResizeMode="NoResize"><Border CornerRadius="24" Background="#0E1927" BorderBrush="#2A3B50" BorderThickness="1" Padding="24"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel><DockPanel x:Name="SettingsHeader" Background="Transparent" Margin="0,0,0,20"><Button x:Name="CloseSettings" Content="&#x00D7;" DockPanel.Dock="Right" Width="30" Height="30" Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Right"/><TextBlock Text="Ajustes" FontSize="22" FontWeight="SemiBold"/></DockPanel>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Ajustes do Cove" Width="460" SizeToContent="Height" MaxHeight="760" WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent" Foreground="#E6EEF8" FontFamily="Segoe UI" ResizeMode="NoResize"><Border CornerRadius="28" Background="#10151F" BorderBrush="#293241" BorderThickness="1" Padding="24"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel><DockPanel x:Name="SettingsHeader" Background="Transparent" Margin="0,0,0,20"><Button x:Name="CloseSettings" Content="&#x00D7;" DockPanel.Dock="Right" Width="30" Height="30" Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Right"/><TextBlock Text="Ajustes" FontSize="22" FontWeight="SemiBold"/></DockPanel>
 <TextBlock Text="Sua conta ChatGPT" FontSize="17"/>
 <TextBlock x:Name="AccountStatus" Foreground="#91A6BE" Margin="0,8,0,12" TextWrapping="Wrap"/>
 <Button x:Name="ConnectChatGPT" Content="Continuar com ChatGPT" Background="#F2F5F8" Foreground="#15202B" BorderBrush="#F2F5F8"/>
@@ -268,6 +305,15 @@ function Begin-Listening([switch]$FromWake) {
  $script:listener.ReplayWakeAudio=[bool]$FromWake
  $script:state='Listening';$script:listenUntil=[datetime]::Now.AddSeconds(12);$script:cooldown=[datetime]::MinValue;Update-Capture
 }
+function Show-CoveOnCall([switch]$Listen){
+ $window.WindowState='Normal';$window.Show()
+ $window.Topmost=$true;$window.Topmost=$false;$window.Activate()|Out-Null
+ if($Listen){
+  if($script:muted){$script:muted=$false;$muteButton.Content='Pausar microfone'}
+  if($script:listener -and $script:listener.Ready){Begin-Listening}
+  else{$script:resumeListeningAt=[datetime]::Now.AddMilliseconds(500)}
+ }
+}
 function Toggle-Microphone {
  $script:muted=-not $script:muted;$script:listenUntil=[datetime]::MinValue
  if($script:muted -and $script:transcribeTask){$transcriber.Stop();$script:transcribeTask=$null;$script:state='Idle';$sendButton.IsEnabled=$true}
@@ -299,6 +345,10 @@ $timer.Interval=[TimeSpan]::FromMilliseconds(80)
 $timer.Add_Tick({
  $script:pulse+=0.16
  try{
+  if($instanceChannel){
+   if($instanceChannel.Listen.WaitOne(0)){Show-CoveOnCall -Listen}
+   elseif($instanceChannel.Show.WaitOne(0)){Show-CoveOnCall}
+  }
   if($script:asrSetup -and $script:asrSetup.HasExited){
    if($script:asrSetup.ExitCode -eq 0 -and $transcriber.Installed){Restart-Listener;$asrMessage='Escuta aprimorada ativada. Fale no seu ritmo.'}
    else{$asrMessage='Nao foi possivel preparar a escuta. Abra Preparar-Escuta.cmd para ver o erro.'}
@@ -348,7 +398,10 @@ $timer.Add_Tick({
    $script:speechTask=$null;if($script:state -eq 'Speaking'){$script:state='Idle';$script:cooldown=[datetime]::Now.AddMilliseconds(900)}
    if($script:listenAfterSpeech){$script:resumeListeningAt=[datetime]::Now.AddMilliseconds(1000);$script:listenAfterSpeech=$false}
   }
-  if($script:resumeListeningAt -ne [datetime]::MinValue -and [datetime]::Now -ge $script:resumeListeningAt){$script:resumeListeningAt=[datetime]::MinValue;Begin-Listening}
+  if($script:resumeListeningAt -ne [datetime]::MinValue -and [datetime]::Now -ge $script:resumeListeningAt){
+   if($script:listener -and -not $script:listener.Ready -and -not $script:lastError){$script:resumeListeningAt=[datetime]::Now.AddMilliseconds(500)}
+   else{$script:resumeListeningAt=[datetime]::MinValue;Begin-Listening}
+  }
   if($script:pendingAppName -and [datetime]::Now -gt $script:pendingAppUntil){$script:pendingAppName=''}
   Update-Capture
   if($script:listener){
@@ -388,7 +441,7 @@ $timer.Add_Tick({
    'Transcribing'{$color='#31667A';$label='Entendendo sua fala...'}
    'Speaking'{$color='#7954BE';$label='Respondendo'}
    default{
-    $color='#153D57'
+    $color='#345F95'
     if($script:loginTask){$label='Conectando ChatGPT...'}
     elseif($script:muted){$label='Microfone pausado';$color='#4D5664'}
     elseif($script:listener -and $script:listener.Ready){$label='Diga Cove'}
@@ -396,8 +449,10 @@ $timer.Add_Tick({
     else{$label='Microfone indisponivel'}
    }
   }
-  $orb.Background=$color;$status.Text=$label;$orb.Opacity=0.72+0.28*[Math]::Abs([Math]::Sin($script:pulse))
-  if($script:state -eq 'Listening' -and $script:listener){$glow.BlurRadius=16+20*$script:listener.Level}else{$glow.BlurRadius=16}
+  $orb.Background=$color;$status.Text=$label
+  $animationMode=if($script:state -in @('Listening','Speaking')){'Active'}else{'Idle'}
+  if($orb.Tag -ne $animationMode){$orb.Tag=$animationMode}
+  if($script:state -eq 'Listening' -and $script:listener){$glow.BlurRadius=22+22*$script:listener.Level}else{$glow.BlurRadius=22};$glow.Color=[Windows.Media.ColorConverter]::ConvertFromString($color)
  }catch{$script:state='Idle';Add-Message 'Cove' 'Ocorreu um erro na escuta. Reinicie o Cove ou digite sua pergunta.'}
 })
 $window.Add_Closed({
@@ -408,8 +463,9 @@ $window.Add_Closed({
  $transcriber.Dispose()
  try{$voiceEngine.Dispose()}catch{}
  $script:key='';$script:history=@();$chat.Close()
+ Close-CoveInstanceChannel $instanceChannel
 })
-$window.Add_ContentRendered({if($SmokeTest){$chat.Show();'WINDOW_RENDERED_V3'|Set-Content -LiteralPath (Join-Path $PSScriptRoot 'smoke-test.log')}})
+$window.Add_ContentRendered({if($SmokeTest){$chat.Show();'WINDOW_RENDERED_V3'|Set-Content -LiteralPath (Join-Path $PSScriptRoot 'smoke-test.log')}elseif($ListenOnStart){Show-CoveOnCall -Listen}})
 $timer.Start()
 if($SmokeTest){
  $smokeTimer=New-Object Windows.Threading.DispatcherTimer

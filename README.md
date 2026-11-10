@@ -23,7 +23,7 @@ Não é necessário instalar Python no sistema, alterar o PATH ou executar como 
 
 ## Preparar e abrir
 
-1. Baixe o ZIP do repositório e extraia todos os arquivos. Abra a pasta que contém **Abrir-Cove.cmd**.
+1. Baixe o ZIP do repositório e extraia todos os arquivos. Se você baixou o repositório completo, entre na pasta **desktop**.
 2. Abra **Abrir-Cove.cmd**. Na primeira vez, ele prepara o reconhecimento do nome em português.
 3. Para instalar as vozes neurais, abra **Preparar-Vozes.cmd** ou use **Conversar → Ajustes → Preparar Serena e Atlas**. Espere a instalação e os testes terminarem.
 4. Abra **Preparar-Escuta.cmd** para instalar o reconhecimento aprimorado de frases. Essa etapa aproveita o ambiente Python preparado no passo anterior.
@@ -49,6 +49,18 @@ Como alternativa, abra **Usar chave da API → Salvar e usar API** em Ajustes. O
 Não há troca automática para a API paga se o plano ChatGPT falhar ou atingir o limite. Nunca publique ou compartilhe a chave.
 
 ## Conversar e abrir apps
+
+### Abrir o Cove com a frase de chegada
+
+Se o ativador original **“oi Cove, papai chegou”** já estiver instalado em `%LOCALAPPDATA%\Cove`, abra **Ativar-Cove-Por-Voz.cmd** para conectá-lo a esta instalação. O configurador atualiza o iniciador da Área de Trabalho e preserva uma cópia do anterior.
+
+Depois, a frase abre o Cove Desktop já pronto para ouvir. Se a mesma instalação estiver aberta, ela é trazida à frente em vez de abrir outra cópia. A janela não fica permanentemente sobre os outros apps.
+
+O atalho **Cove Voz** em Inicializar mantém o ouvinte da frase ativo após entrar no Windows. Fechar o Cove Desktop não encerra esse ouvinte separado. Para iniciar sem sair da sessão, abra **Ativar Cove por voz.cmd** na Área de Trabalho e aguarde alguns segundos. O computador precisa estar acordado e com sua sessão iniciada.
+
+Após esta atualização, encerre instâncias de versões anteriores do Cove uma vez antes de testar, porque elas ainda não possuem o controle de instância única. Se mover a pasta do projeto, execute a configuração da ativação novamente.
+
+### Pedir algo ao Cove
 
 Diga **“Cove”**, espere a bolinha ficar verde e faça seu pedido. Pare de falar para enviar; a captura espera cerca de um segundo de pausa. A transcrição pode levar alguns segundos, conforme o computador.
 
@@ -100,6 +112,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Verificar-Apps.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Verificar-ChatGPT.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Verificar-Escuta.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Verificar-Vozes.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Verificar-Ativacao.ps1
 powershell -NoProfile -STA -ExecutionPolicy Bypass -File .\Cove-Voice.ps1 -SmokeTest
 ```
 

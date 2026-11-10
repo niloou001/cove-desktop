@@ -1,7 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <Style TargetType="Button">
-  <Setter Property="Background" Value="#213044"/><Setter Property="Foreground" Value="#E6EEF8"/>
-  <Setter Property="BorderBrush" Value="#314258"/><Setter Property="BorderThickness" Value="1"/>
+  <Setter Property="Background" Value="#1C2735"/><Setter Property="Foreground" Value="#E7EDF5"/>
+  <Setter Property="BorderBrush" Value="#303B4C"/><Setter Property="BorderThickness" Value="1"/>
   <Setter Property="Padding" Value="14,9"/><Setter Property="Cursor" Value="Hand"/>
   <Setter Property="FontSize" Value="12"/><Setter Property="FontFamily" Value="Segoe UI"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
@@ -12,26 +12,26 @@
   </ControlTemplate></Setter.Value></Setter>
  </Style>
  <Style TargetType="TextBox">
-  <Setter Property="Background" Value="#142131"/><Setter Property="Foreground" Value="#E6EEF8"/>
-  <Setter Property="CaretBrush" Value="#8BDAEC"/><Setter Property="BorderBrush" Value="#2A3B50"/><Setter Property="BorderThickness" Value="1"/>
+  <Setter Property="Background" Value="#161E2B"/><Setter Property="Foreground" Value="#E7EDF5"/>
+  <Setter Property="CaretBrush" Value="#8BDAEC"/><Setter Property="BorderBrush" Value="#293547"/><Setter Property="BorderThickness" Value="1"/>
   <Setter Property="FontSize" Value="14"/><Setter Property="Padding" Value="14,12"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="16" Padding="{TemplateBinding Padding}"><ScrollViewer x:Name="PART_ContentHost"/></Border></ControlTemplate></Setter.Value></Setter>
  </Style>
  <Style TargetType="PasswordBox">
-  <Setter Property="Background" Value="#142131"/><Setter Property="Foreground" Value="#E6EEF8"/><Setter Property="CaretBrush" Value="#8BDAEC"/><Setter Property="Padding" Value="14,12"/>
-  <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="PasswordBox"><Border Background="{TemplateBinding Background}" BorderBrush="#314258" BorderThickness="1" CornerRadius="16" Padding="{TemplateBinding Padding}"><ScrollViewer x:Name="PART_ContentHost"/></Border></ControlTemplate></Setter.Value></Setter>
+  <Setter Property="Background" Value="#161E2B"/><Setter Property="Foreground" Value="#E7EDF5"/><Setter Property="CaretBrush" Value="#8BDAEC"/><Setter Property="Padding" Value="14,12"/>
+  <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="PasswordBox"><Border Background="{TemplateBinding Background}" BorderBrush="#303B4C" BorderThickness="1" CornerRadius="16" Padding="{TemplateBinding Padding}"><ScrollViewer x:Name="PART_ContentHost"/></Border></ControlTemplate></Setter.Value></Setter>
  </Style>
- <Style TargetType="ContextMenu"><Setter Property="Background" Value="#152231"/><Setter Property="Foreground" Value="#E6EEF8"/><Setter Property="Padding" Value="8"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ContextMenu"><Border Background="{TemplateBinding Background}" BorderBrush="#314258" BorderThickness="1" CornerRadius="14" Padding="{TemplateBinding Padding}"><StackPanel IsItemsHost="True"/></Border></ControlTemplate></Setter.Value></Setter></Style>
- <Style TargetType="MenuItem"><Setter Property="Padding" Value="12,9"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="MenuItem"><Border x:Name="Item" Background="Transparent" CornerRadius="9" Padding="{TemplateBinding Padding}"><ContentPresenter ContentSource="Header"/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="#2A3D54"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+ <Style TargetType="ContextMenu"><Setter Property="Background" Value="#141C28"/><Setter Property="Foreground" Value="#E7EDF5"/><Setter Property="Padding" Value="8"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ContextMenu"><Border Background="{TemplateBinding Background}" BorderBrush="#303B4C" BorderThickness="1" CornerRadius="14" Padding="{TemplateBinding Padding}"><StackPanel IsItemsHost="True"/></Border></ControlTemplate></Setter.Value></Setter></Style>
+ <Style TargetType="MenuItem"><Setter Property="Padding" Value="12,9"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="MenuItem"><Border x:Name="Item" Background="Transparent" CornerRadius="9" Padding="{TemplateBinding Padding}"><ContentPresenter ContentSource="Header"/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="#253549"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
  <Style TargetType="ComboBox">
-  <Setter Property="Foreground" Value="#E6EEF8"/><Setter Property="Background" Value="#142131"/>
+  <Setter Property="Foreground" Value="#E7EDF5"/><Setter Property="Background" Value="#161E2B"/>
   <Setter Property="Padding" Value="12,10"/><Setter Property="FontSize" Value="12"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox"><Grid>
-   <ToggleButton Foreground="#E6EEF8" Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
-    <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="#142131" BorderBrush="#314258" BorderThickness="1" CornerRadius="14" Padding="12,10"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="20"/></Grid.ColumnDefinitions><ContentPresenter Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}" ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}}" VerticalAlignment="Center"/><TextBlock Text="&#x2304;" Grid.Column="1" HorizontalAlignment="Right" Foreground="#91A6BE"/></Grid></Border></ControlTemplate></ToggleButton.Template>
+   <ToggleButton Foreground="#E7EDF5" Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+    <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="#161E2B" BorderBrush="#303B4C" BorderThickness="1" CornerRadius="14" Padding="12,10"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="20"/></Grid.ColumnDefinitions><ContentPresenter Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}" ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}}" VerticalAlignment="Center"/><TextBlock Text="&#x2304;" Grid.Column="1" HorizontalAlignment="Right" Foreground="#91A6BE"/></Grid></Border></ControlTemplate></ToggleButton.Template>
    </ToggleButton>
-   <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False" IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Fade"><Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="220" Background="#142131" BorderBrush="#314258" BorderThickness="1" CornerRadius="14" Padding="6" Margin="0,4,0,0"><ScrollViewer><ItemsPresenter/></ScrollViewer></Border></Popup>
+   <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False" IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Fade"><Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="220" Background="#161E2B" BorderBrush="#303B4C" BorderThickness="1" CornerRadius="14" Padding="6" Margin="0,4,0,0"><ScrollViewer><ItemsPresenter/></ScrollViewer></Border></Popup>
   </Grid></ControlTemplate></Setter.Value></Setter>
  </Style>
- <Style TargetType="ComboBoxItem"><Setter Property="Foreground" Value="#E6EEF8"/><Setter Property="Padding" Value="10,8"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="Choice" Background="Transparent" CornerRadius="8" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Choice" Property="Background" Value="#2A3D54"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="Choice" Property="Background" Value="#235D74"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+ <Style TargetType="ComboBoxItem"><Setter Property="Foreground" Value="#E7EDF5"/><Setter Property="Padding" Value="10,8"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="Choice" Background="Transparent" CornerRadius="8" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Choice" Property="Background" Value="#253549"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="Choice" Property="Background" Value="#315F77"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
 </ResourceDictionary>

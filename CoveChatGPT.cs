@@ -21,6 +21,8 @@ namespace CoveApp {
   readonly string directory,hostId;
   readonly SemaphoreSlim gate=new SemaphoreSlim(1,1);
   Dictionary<string,object> profile;
+  string cachedModel="";DateTime modelUntil=DateTime.MinValue;
+  public readonly System.Collections.Concurrent.ConcurrentQueue<string> TextDeltas=new System.Collections.Concurrent.ConcurrentQueue<string>();
   public ChatGPTAccount(string path) {
    directory=path;Directory.CreateDirectory(path);
    string hostPath=Path.Combine(path,"host.txt");
@@ -60,7 +62,7 @@ namespace CoveApp {
    try {
     File.WriteAllBytes(temp,ProtectedData.Protect(raw,null,DataProtectionScope.CurrentUser));
     if(File.Exists(file))File.Replace(temp,file,null);else File.Move(temp,file);
-    profile=data;
+    profile=data;cachedModel="";modelUntil=DateTime.MinValue;
    }finally{Array.Clear(raw,0,raw.Length);if(File.Exists(temp))File.Delete(temp);}
   }
   public bool Connected {get{return Str(profile,"access_token").Length>0&&HasPermission(Str(profile,"scope"));}}
@@ -212,26 +214,30 @@ namespace CoveApp {
     string access=await AccessToken(token).ConfigureAwait(false);
     using(var http=Client()) {
      http.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",access);
-     var catalog=Object(await GetText(http,Resource+"/models",token).ConfigureAwait(false));object models;string chosen="";
+     string chosen=cachedModel;
+     if(chosen.Length==0||DateTime.UtcNow>=modelUntil){
+     var catalog=Object(await GetText(http,Resource+"/models",token).ConfigureAwait(false));object models;chosen="";
      if(catalog.TryGetValue("models",out models))foreach(var item in (object[])models){var model=item as Dictionary<string,object>;if(Str(model,"visibility")=="list"&&Str(model,"slug").Length>0){chosen=Str(model,"slug");break;}}
      if(chosen.Length==0)throw new Exception("Nenhum modelo disponivel para esta conexao ChatGPT.");
+      cachedModel=chosen;modelUntil=DateTime.UtcNow.AddMinutes(10);
+     }
      var request=Object(body);request["model"]=chosen;request["stream"]=true;request["store"]=false;
      // Avoid unsupported API-only options for account-specific models.
      request.Remove("max_output_tokens");
      using(var message=new HttpRequestMessage(HttpMethod.Post,Resource+"/responses")) {
       message.Content=new StringContent(Json().Serialize(request),Encoding.UTF8,"application/json");
       using(var response=await http.SendAsync(message,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false)) {
-       if(!response.IsSuccessStatusCode){if((int)response.StatusCode==429)throw new Exception("Limite do plano ChatGPT atingido para o Cove. Confira o uso e a permissao do app nos Ajustes do ChatGPT.");throw new Exception("ChatGPT recusou a pergunta (HTTP "+(int)response.StatusCode+"). Confira a conexao e as permissoes do Cove.");}
+       if(!response.IsSuccessStatusCode){cachedModel="";modelUntil=DateTime.MinValue;if((int)response.StatusCode==429)throw new Exception("Limite do plano ChatGPT atingido para o Cove. Confira o uso e a permissao do app nos Ajustes do ChatGPT.");throw new Exception("ChatGPT recusou a pergunta (HTTP "+(int)response.StatusCode+"). Confira a conexao e as permissoes do Cove.");}
        using(var stream=await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
        using(var reader=new StreamReader(stream,Encoding.UTF8))
        using(token.Register(()=>stream.Close())) {
         var data=new StringBuilder();var output=new StringBuilder();bool completed=false;string line;
         while((line=await reader.ReadLineAsync().ConfigureAwait(false))!=null) {
          token.ThrowIfCancellationRequested();
-         if(line.Length==0){if(data.Length>0){ProcessEvent(data.ToString(),output,ref completed);data.Clear();}if(completed)break;}
+         if(line.Length==0){if(data.Length>0){ConsumeEvent(data.ToString(),output,ref completed);data.Clear();}if(completed)break;}
          else if(line.StartsWith("data:")){if(data.Length>0)data.Append('\n');data.Append(line.Substring(5).TrimStart());}
         }
-        if(!completed&&data.Length>0)ProcessEvent(data.ToString(),output,ref completed);
+        if(!completed&&data.Length>0)ConsumeEvent(data.ToString(),output,ref completed);
         if(!completed)throw new Exception("A resposta do ChatGPT foi interrompida antes de terminar.");
         if(output.Length==0)throw new Exception("ChatGPT terminou sem uma resposta de texto.");return output.ToString();
        }
@@ -239,6 +245,11 @@ namespace CoveApp {
      }
     }
    }finally{gate.Release();}
+  }
+  void ConsumeEvent(string json,StringBuilder output,ref bool completed){
+   int before=output.Length;
+   ProcessEvent(json,output,ref completed);
+   if(output.Length>before)TextDeltas.Enqueue(output.ToString(before,output.Length-before));
   }
   public static void ProcessEvent(string json,StringBuilder output,ref bool completed) {
    if(json=="[DONE]")return;var data=Object(json);string kind=Str(data,"type");

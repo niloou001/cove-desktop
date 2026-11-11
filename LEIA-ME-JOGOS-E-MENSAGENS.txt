@@ -1,0 +1,50 @@
+Abra Atualizar Cove na Area de Trabalho para carregar esta versao.
+
+JOGOS
+"Cove abre o jogo NOME" ou "Cove jogar NOME".
+Encontra jogos instalados nos manifests da Steam, incluindo bibliotecas em
+outros discos, e nos manifests da Epic Games. Tambem usa atalhos do Windows,
+apps Xbox/Microsoft Store registrados no menu Iniciar e seus cadastros.
+Abre pela Steam ou Epic quando o jogo foi encontrado nessas bibliotecas.
+Nao instala nem compra jogos. O launcher pode pedir login ou atualizacao.
+Jogos portateis ou de outros launchers podem ser adicionados em Apps e jogos,
+escolhendo o executavel ou um atalho existente.
+"Atualizar lista de jogos" refaz a descoberta quando instalar um jogo novo.
+
+MENSAGENS
+"Cove mande mensagem para o contato Ester no WhatsApp falando que gosta dela".
+Texto resultante deste exemplo: "Eu gosto de voce."
+"Cove mande mensagem para Ester no Discord: Oi, tudo bem?".
+Texto entre aspas e preservado literalmente.
+Se nao disser o aplicativo, a Cove pergunta WhatsApp ou Discord e conserva
+o contato e o texto. Se faltar o texto ou contato, pergunta apenas esse dado.
+"Cancela" cancela o pedido ainda incompleto.
+
+O envio e local, usando WhatsApp Desktop ou Discord Desktop com a conta
+conectada. Procura o contato pelo nome, verifica a conversa e o rascunho,
+digita e aciona Enviar uma unica vez. Homonimos exigem um nome mais completo.
+Nao envia para grupos; conserva rascunhos existentes e nao repete o envio
+quando o resultado nao e confirmado. Nao confirma entrega ou leitura.
+Se a interface nao expuser os controles ou o Windows impedir o controle,
+a Cove informa a falha. Depois de um envio sem confirmacao, confira a
+conversa antes de repetir, pois o aplicativo pode ter enviado mesmo assim.
+Esc interrompe a automacao antes do envio. O conteudo da mensagem e tratado
+localmente por esses comandos, sem pedir a IA para executar o envio.
+
+CONVERSA
+Baloes separados para voce e Cove, texto selecionavel para copiar,
+cor personalizada nos seus baloes, cantos arredondados e entrada suave.
+O historico usado pela conversa foi mantido. A tela mostra os ultimos
+80 baloes para continuar leve; o texto do historico continua preservado.
+
+VALIDACAO
+Compilacao e teste de abertura da interface; manifests de bibliotecas
+simuladas; interpretacao e roteamento reais com efeitos externos simulados;
+fluxo de envio com verificacao dupla do contato, texto exato, rascunho,
+cancelamento e nenhuma repeticao automatica.
+Nenhuma mensagem real foi enviada e nenhum jogo real foi aberto nos testes.
+O envio nas versoes instaladas do WhatsApp/Discord ainda precisa ser
+verificado na sessao interativa do usuario.
+
+Referencia Epic: Epic Games Protocol Activation, no servidor de documentos
+assets-unreal2-epic-prod-us2.s3.dualstack.us-east-1.amazonaws.com.

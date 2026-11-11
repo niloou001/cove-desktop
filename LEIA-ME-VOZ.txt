@@ -1,0 +1,50 @@
+COVE - conversa por voz para Windows 64 bits
+
+Feche o prototipo antigo e abra Abrir-Cove.cmd no Explorador de Arquivos.
+Nao abra pelo agente Codex: sua area de trabalho isolada nao aparece no monitor.
+Na primeira abertura, baixa Vosk 0.3.38 do NuGet e o modelo portugues do
+site oficial alphacephei.com (aprox. 55 MB total). Nao requer Python ou Node.
+Se falhar, copie o erro. Preparar-Cove.cmd tenta novamente.
+
+Clique em Conversa / configurar > Configurar chave. Cole a chave da API
+nesse campo local, nunca na conversa do Codex.
+Crie sua chave em https://platform.openai.com/api-keys
+O uso da API pode gerar cobrancas e requer acesso/saldo na conta da API.
+A chave salva e protegida por DPAPI para seu usuario do Windows.
+Configurar chave > Remover chave salva apaga a copia do Cove.
+OPENAI_API_KEY do ambiente tambem pode ser usada; remova essa variavel
+se nao quiser que seja reutilizada na proxima abertura.
+
+Diga Cove (pronuncia Couve), espere a bolinha ficar VERDE e faca a pergunta.
+Pare de falar para enviar. AMARELO = pensando; ROXO = respondendo.
+O nome precisa ser reconhecido pelo modelo local e pode falhar conforme
+pronuncia e ruido. Clique na bolinha para ativar sem dizer o nome.
+Depois da resposta, diga Cove novamente para fazer outra pergunta.
+Ouve por ate 12 segundos aguardando uma pergunta. Clique durante a resposta
+para interromper a fala. Tambem pode digitar; Enter envia.
+Pausar microfone interrompe o reconhecimento e descarta os dados capturados.
+Use Sair no menu da bolinha para encerrar a captura e liberar o dispositivo.
+Arraste o texto abaixo da bolinha para mover. Botao direito abre o menu.
+
+A espera pelo nome e a transcricao sao locais via Vosk. Audio nao e salvo
+nem enviado pelo Cove. Quando ativado, envia o texto da pergunta e ate
+8 pares anteriores a OpenAI, API Responses, gpt-4.1-mini, store=false.
+O historico fica na memoria e pode ser apagado com Limpar conversa ou sair.
+A voz e sintetizada pelo Windows; nao e a voz Cove oficial do ChatGPT.
+O app nao ve sua tela, nao controla o computador e nao recebe automaticamente
+as conversas ou ferramentas do Codex/ChatGPT.
+
+O iniciador usa ExecutionPolicy Bypass somente no processo do Cove;
+nao altera a politica permanente do Windows.
+Se o microfone for negado, confira Configuracoes > Privacidade e seguranca
+> Microfone e a permissao para aplicativos da area de trabalho.
+Confira tambem o microfone e a saida de audio padrao nas configuracoes de som.
+
+Interface e codigo verificados no ambiente isolado do Codex. Microfone,
+downloads e resposta real da API dependem do teste no Windows e da chave.
+Nao foram validados de ponta a ponta aqui.
+
+https://developers.openai.com/api/docs/guides/text
+https://developers.openai.com/api/docs/models/gpt-4.1-mini
+https://www.nuget.org/packages/Vosk/0.3.38
+https://alphacephei.com/vosk/models

@@ -109,19 +109,61 @@ def load_engine(folder):
     )
 
 
-def transcribe(engine, pcm, hotwords=""):
+def prepare_audio(pcm):
+    """Remove DC bias and lift quiet speech with bounded, fixed gain."""
     import numpy as np
 
     if not 3200 <= len(pcm) <= 1_600_000 or len(pcm) % 2:
         raise ValueError("Invalid audio length")
     audio = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768.0
+    # Estimate a constant sensor offset from the quietest 20 ms blocks.
+    # A whole-clip mean also removes natural asymmetry from voiced sounds.
+    count = audio.size // 320
+    if count:
+        blocks = audio[:count * 320].reshape(count, 320)
+        variances = blocks.var(axis=1)
+        quiet = np.argsort(variances)[:max(1, count // 5)]
+        offset = float(np.median(blocks.mean(axis=1)[quiet]))
+        if abs(offset) > 0.001:
+            audio -= offset
+    rms = float(np.sqrt(np.mean(audio * audio)))
+    peak = float(np.max(np.abs(audio)))
+    # Do not amplify an almost silent recording or change normal/loud speech.
+    if 0.0008 < rms < 0.015 and peak > 0:
+        gain = min(6.0, 0.035 / rms, 0.98 / peak)
+        if gain > 1:
+            audio *= gain
+    return np.ascontiguousarray(audio, dtype=np.float32)
+
+
+def vocabulary_hints(value, limit=320):
+    # Keep individual names intact; do not cut a large app list mid-word.
+    if not isinstance(value, str):
+        return ""
+    selected, seen = [], set()
+    for term in value.replace(";", ",").replace("\n", ",").split(","):
+        term = " ".join(term.split())
+        key = term.casefold()
+        if not term or key in seen or len(term) > 60:
+            continue
+        if len(", ".join(selected + [term])) > limit:
+            break
+        selected.append(term)
+        seen.add(key)
+    return ", ".join(selected)
+
+
+def transcribe(engine, pcm, hotwords=""):
+    import numpy as np
+
+    audio = prepare_audio(pcm)
     segments, _ = engine.transcribe(
         audio, language="pt", task="transcribe", beam_size=5,
         temperature=0.0, condition_on_previous_text=False,
         vad_filter=True,
         vad_parameters={"threshold": 0.35, "min_silence_duration_ms": 800,
                         "min_speech_duration_ms": 150},
-        hotwords=hotwords[:500],
+        hotwords=vocabulary_hints(hotwords),
         hallucination_silence_threshold=1.0,
     )
     retained = [s for s in segments if s.no_speech_prob < 0.65 and s.avg_logprob > -1.15]
@@ -178,9 +220,12 @@ def main():
     for line in sys.stdin:
         try:
             request = json.loads(line)
-            pcm = base64.b64decode(request["pcm"], validate=True)
-            with contextlib.redirect_stdout(sys.stderr):
-                result = transcribe(engine, pcm, request.get("hotwords", ""))
+            if request.get("warmup"):
+                result = {"ready": True}
+            else:
+                pcm = base64.b64decode(request["pcm"], validate=True)
+                with contextlib.redirect_stdout(sys.stderr):
+                    result = transcribe(engine, pcm, request.get("hotwords", ""))
         except Exception:
             result = {"error": "Nao consegui transcrever esta fala. Tente novamente ou digite a mensagem."}
         protocol.write(json.dumps(result, ensure_ascii=True) + "\n")

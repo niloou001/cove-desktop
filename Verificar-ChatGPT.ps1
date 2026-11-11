@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 Add-Type -Path (Join-Path $PSScriptRoot 'CoveChatGPT.cs') -ReferencedAssemblies System.Net.Http,System.Web.Extensions,System.Security
 function Expect-Failure([scriptblock]$code){$failed=$false;try{& $code}catch{$failed=$true};if(-not $failed){throw 'Entrada invalida foi aceita.'}}
 $query=[CoveApp.ChatGPTAccount]::ParseQuery('?code=test%2Bvalue&state=abc&scope=openid+profile')

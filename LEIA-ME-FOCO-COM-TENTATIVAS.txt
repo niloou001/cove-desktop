@@ -1,0 +1,23 @@
+Correcao do foco antes do envio
+
+O log mostrou que o campo era encontrado, mas SetFocus nao produzia foco
+de teclado imediatamente. A Cove desistia nessa primeira verificacao.
+
+Agora faz ate quatro tentativas, com espera curta pelo foco entre elas.
+Rele a janela e o campo em cada tentativa, confirma o destinatario e
+reconhece o indicador HasKeyboardFocus, alem do elemento de foco retornado
+pelo Windows. No modo Mouse, pode clicar no proprio editor apos a primeira
+tentativa, verificando alvo e coordenadas dos dois monitores.
+Esse clique nunca usa o caminho generico Invoke/Enter.
+
+Se o foco se perder depois de escrever, tenta recupera-lo e exige o mesmo
+texto no rascunho antes de pressionar Enter. O texto nao e redigitado e
+Enviar continua sendo acionado uma unica vez. Esc ou troca de janela
+interrompe, sem tentar retomar o controle de outro aplicativo.
+
+Testes simulados: foco obtido na terceira tentativa resulta em uma escrita
+e um envio; quatro falhas nao escrevem nem enviam; cancelamento interrompe
+na primeira tentativa. Testes de interface e compilacao tambem executados.
+Nenhuma mensagem real foi enviada nos testes.
+
+Abra Atualizar Cove na Area de Trabalho para carregar esta correcao.

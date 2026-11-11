@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 try{
  $python=Join-Path $PSScriptRoot 'assets\neural\python\python.exe'
  if(-not (Test-Path -LiteralPath $python)){throw 'Prepare as vozes naturais primeiro para instalar o ambiente local do Cove.'}

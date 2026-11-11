@@ -13,6 +13,7 @@ namespace CoveApp {
   public CoveTranscription(string folder){root=folder;}
   public bool Installed{get{return File.Exists(Path.Combine(root,@"assets\asr\ready.txt"))&&File.Exists(Path.Combine(root,@"assets\asr\small\model.bin"))&&File.Exists(Path.Combine(root,@"assets\neural\python\python.exe"));}}
   static string Quote(string s){return "\""+s.Replace("\"","\\\"")+"\"";}
+  public Task<string> WarmUp(){if(!Installed||stopping)return Task.FromResult("");int current=generation;return Task.Run(()=>Run(null,"",current));}
   public Task<string> Transcribe(byte[] pcm,string hotwords){
    if(stopping)throw new ObjectDisposedException("CoveTranscription");
    int current=generation;
@@ -34,7 +35,7 @@ namespace CoveApp {
     }
     try{
      var json=new JavaScriptSerializer{MaxJsonLength=4000000};
-     var request=new System.Collections.Generic.Dictionary<string,object>{{"pcm",Convert.ToBase64String(pcm)},{"hotwords",hotwords}};
+     var request=pcm==null?new System.Collections.Generic.Dictionary<string,object>{{"warmup",true}}:new System.Collections.Generic.Dictionary<string,object>{{"pcm",Convert.ToBase64String(pcm)},{"hotwords",hotwords}};
      byte[] message=Encoding.UTF8.GetBytes(json.Serialize(request)+"\n");
      process.StandardInput.BaseStream.Write(message,0,message.Length);process.StandardInput.BaseStream.Flush();
      var read=process.StandardOutput.ReadLineAsync();DateTime deadline=DateTime.UtcNow.AddSeconds(90);
@@ -64,7 +65,7 @@ namespace CoveApp {
     started=true;foreach(byte[] b in lead)buffer.Write(b,0,b.Length);lead.Clear();leadBytes=0;
    }else buffer.Write(pcm,0,pcm.Length);
    silenceBytes=voiced?0:silenceBytes+pcm.Length;
-   if(silenceBytes>=35200||buffer.Length>=960000){sent=true;return buffer.ToArray();}
+   if(silenceBytes>=25600||buffer.Length>=960000){sent=true;return buffer.ToArray();}
    return null;
   }
  }

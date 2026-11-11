@@ -1,0 +1,27 @@
+Correcao da localizacao do campo de mensagem
+
+A verificacao antiga aceitava apenas algumas etiquetas com @ e exigia
+cabecalho do tipo ToolBar. Isso podia rejeitar um campo visivel.
+
+Agora reconhece Conversar com @NOME, Mensagem para NOME, Message NOME e
+Enviar mensagem a @NOME, alem das etiquetas anteriores. Usa tambem a dica
+acessivel do campo e os IDs conhecidos da area de escrita.
+Aceita campos Edit, Document, Custom ou Pane que exponham leitura do texto.
+Wrappers do mesmo editor sao agrupados; campos independentes repetidos
+continuam sendo recusados.
+Cabecalhos conhecidos de conversa podem ser ToolBar, Group ou Pane.
+Campos genericos, como Digite uma mensagem, precisam de evidencia adicional
+de conversa privada no cabecalho. Busca, canal # e destinatario diferente
+continuam bloqueados. O rascunho existente continua preservado.
+
+O diagnostico de uma falha privada agora registra etiquetas, IDs, tipos e
+suporte de leitura dos campos, sem ler valores de rascunho ou mensagens.
+O erro-base e salvo antes da leitura dos controles para nao ficar com um
+log antigo quando a interface mudar durante o diagnostico.
+
+Teste em janela propria: campos em portugues/ingles, etiqueta generica,
+cabecalho de regiao, RichTextBox/Document e busca atrasada; rejeicao de
+outro destinatario, canal #, busca de mensagens e multiplos editores.
+Nenhuma mensagem real foi enviada durante os testes.
+
+Abra Atualizar Cove na Area de Trabalho para carregar esta correcao.

@@ -24,6 +24,7 @@ namespace CoveApp {
   }
   public bool Installed {get{return File.Exists(Path.Combine(assets,"ready.txt"))&&File.Exists(Path.Combine(assets,@"python\python.exe"))&&File.Exists(Path.Combine(assets,"kokoro-v1.0.onnx"))&&File.Exists(Path.Combine(assets,"voices-v1.0.bin"));}}
   static string Quote(string value){return "\""+value.Replace("\"","\\\"")+"\"";}
+  public Task<bool> WarmUp(){if(!Installed||stopping)return Task.FromResult(false);int current=generation;return Task.Run(()=>GenerateAndPlay(null,"serena",current));}
   public Task<bool> Speak(string text,string id){
    if(stopping)throw new ObjectDisposedException("CoveSpeech");
    Stop();
@@ -54,19 +55,23 @@ namespace CoveApp {
     try{
      var json=new JavaScriptSerializer{MaxJsonLength=20000000};
      // JSON is sent through a pipe, never interpolated into a shell command.
-     byte[] input=Encoding.UTF8.GetBytes(json.Serialize(new{text=text,preset=preset})+"\n");
+     byte[] input=Encoding.UTF8.GetBytes(json.Serialize(new{text=text,preset=preset,stream=true,warmup=text==null})+"\n");
      process.StandardInput.BaseStream.Write(input,0,input.Length);process.StandardInput.BaseStream.Flush();
+     while(true){
      var read=process.StandardOutput.ReadLineAsync();
      DateTime deadline=DateTime.UtcNow.AddSeconds(120);
      while(!read.Wait(40)){CheckGeneration(current);if(DateTime.UtcNow>deadline)throw new Exception("A geracao da voz demorou demais. Tente uma resposta mais curta.");}
      CheckGeneration(current);
      string response=read.GetAwaiter().GetResult();
      if(response==null)throw new Exception("O mecanismo de voz encerrou. Execute Preparar-Vozes.cmd para conferir a instalacao.");
+     var packet=json.DeserializeObject(response) as Dictionary<string,object>;
+     if(packet!=null&&(packet.ContainsKey("done")||packet.ContainsKey("ready")))break;
      byte[] wav=DecodeAudio(response);
      using(var audio=new MemoryStream(wav))using(var sound=new SoundPlayer(audio)){
       lock(processLock){CheckGeneration(current);player=sound;}
       try{sound.Load();CheckGeneration(current);sound.PlaySync();CheckGeneration(current);}
       finally{lock(processLock){if(player==sound)player=null;}}
+     }
      }
      return true;
     }catch(OperationCanceledException){throw;}

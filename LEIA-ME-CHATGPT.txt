@@ -1,0 +1,40 @@
+COVE - conectar sua conta ChatGPT
+
+1. Feche o Cove pelo menu da bolinha > Sair.
+2. Abra Abrir-Cove.cmd no seu Windows.
+3. Clique Conversar > Ajustes > Continuar com ChatGPT.
+4. Entre na pagina oficial da OpenAI no navegador e autorize o uso do plano.
+5. Volte ao Cove e confira a mensagem de conta conectada.
+6. Diga Cove, espere ficar verde e faca sua pergunta.
+
+O Cove nao pede sua senha: o login acontece no navegador, em auth.openai.com.
+O fluxo usa OAuth com PKCE, state e nonce. A identidade assinada e verificada
+com as chaves publicadas pela OpenAI antes de salvar as credenciais.
+As credenciais do Cove sao protegidas para seu usuario do Windows por DPAPI
+na pasta .cove-account. O Cove nao le cookies nem credenciais de outros apps.
+
+O uso do plano depende da elegibilidade da conta (como Plus ou Pro), das
+permissoes autorizadas e dos limites do ChatGPT. Login nao garante uso ilimitado.
+O botao Gerenciar uso abre https://chatgpt.com/settings/usage
+
+O audio continua local: reconhecimento Vosk e voz sintetizada do Windows.
+O texto das perguntas e o historico recente do Cove sao enviados a OpenAI.
+Nao importa seu historico do ChatGPT, memoria ou voz oficial Cove.
+
+Nao ha troca automatica para a API paga se o plano falhar ou atingir limite.
+API e alternativa explicita em Ajustes > Usar chave da API > Salvar e usar API.
+
+Desconectar tenta revogar a sessao e apaga as credenciais locais. Se nao houver
+confirmacao de revogacao, o Cove informa como remover o acesso no ChatGPT.
+O identificador da instalacao e do registro e mantido para nao registrar
+outro aplicativo toda vez que voce entrar novamente.
+
+Validado: compilacao, interface, verificacoes de identidade, scopes, parser
+do retorno OAuth, conclusao do stream e cancelamento sem abrir o navegador.
+Login real e resposta com seu plano so podem ser confirmados depois de
+voce autorizar a conexao no seu navegador e fazer a primeira pergunta.
+
+Documentacao oficial:
+https://developers.openai.com/siwc/token-sharing-open-source/sign-in
+https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference
+https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions

@@ -1,0 +1,28 @@
+OI COVE, PAPAI CHEGOU -> COVE DESKTOP
+
+Esta integracao usa o ouvinte de ativacao que ja estava instalado em
+%LOCALAPPDATA%\Cove. Ele reconhece a frase completa e executa Cove.bat
+na Area de Trabalho. O destino agora e o Cove Desktop desta pasta.
+
+Para iniciar agora na sua sessao do Windows, abra Ativar Cove por voz.cmd
+na Area de Trabalho. Aguarde alguns segundos e diga: oi Cove, papai chegou.
+Nas proximas entradas no Windows, o atalho Cove Voz em Inicializar inicia
+o ouvinte automaticamente. O computador precisa estar ligado e acordado,
+com sua sessao iniciada e acesso ao microfone permitido.
+
+O novo iniciador abre o Cove em modo de escuta. Se a mesma instalacao ja
+estiver aberta, envia um sinal para trazer a janela e iniciar a escuta,
+em vez de criar outra copia. A janela continua sem ficar permanentemente
+por cima dos seus aplicativos.
+
+Feche instancias de versoes antigas do Cove apos atualizar: elas ainda nao
+possuem o canal de instancia unica. Ouvintes de ativacao antigos reconhecem
+a frase com Vosk; a qualidade depende do microfone padrao e do ambiente.
+
+Instalar-Ativacao.ps1 configura os atalhos; -ConfigureOnly apenas prepara,
+sem iniciar processos. Ativar-Cove-Por-Voz.cmd configura e inicia o ouvinte.
+O iniciador anterior da Area de Trabalho foi preservado como
+Cove-antes-do-Desktop.bat.bak. Ele nao e incluido no repositorio do projeto.
+
+Nao mova a pasta do Cove sem executar Instalar-Ativacao.ps1 novamente,
+pois o iniciador da Area de Trabalho aponta para a instalacao atual.

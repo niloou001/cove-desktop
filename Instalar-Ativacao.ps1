@@ -1,4 +1,4 @@
-param([switch]$ConfigureOnly)
+﻿param([switch]$ConfigureOnly)
 $ErrorActionPreference='Stop'
 try{
  $base=Join-Path $env:LOCALAPPDATA 'Cove'
@@ -7,6 +7,9 @@ try{
  $launcher=Join-Path $PSScriptRoot 'Abrir-Cove-Por-Voz.cmd'
  if(-not (Test-Path -LiteralPath $listener) -or -not (Test-Path -LiteralPath $legacyStart)){throw 'Instale primeiro o ativador da frase oi Cove, papai chegou. Esta integracao usa o ouvinte local ja instalado.'}
  if(-not (Test-Path -LiteralPath $launcher)){throw 'O iniciador do Cove Desktop nao foi encontrado.'}
+ $wakeSource=Join-Path $PSScriptRoot 'CoveWakeListener.py'
+ if(Test-Path -LiteralPath $wakeSource){Copy-Item -LiteralPath $wakeSource -Destination $listener -Force}
+ [IO.File]::WriteAllText((Join-Path $base 'desktop-root.txt'),$PSScriptRoot,[Text.Encoding]::UTF8)
  $legacyDesktop=Join-Path $env:USERPROFILE 'Desktop'
  $actualDesktop=[Environment]::GetFolderPath('Desktop')
  $desktops=@($legacyDesktop,$actualDesktop)|Select-Object -Unique
@@ -31,7 +34,8 @@ try{
   $shortcut.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+$legacyStart+'"'
   $shortcut.WorkingDirectory=$base;$shortcut.WindowStyle=7;$shortcut.Save()
  }
- Write-Host 'Frase configurada: oi Cove, papai chegou -> Cove Desktop.' -ForegroundColor Green
+ . (Join-Path $PSScriptRoot 'CoveIdentity.ps1')
+ Write-Host ('Frase configurada: oi '+(Get-CoveAssistantName)+', papai chegou -> Cove Desktop.') -ForegroundColor Green
  Write-Host 'A inicializacao no login do Windows esta configurada.'
  if(-not $ConfigureOnly){
   Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',('"'+$legacyStart+'"')) -WorkingDirectory $base -WindowStyle Hidden

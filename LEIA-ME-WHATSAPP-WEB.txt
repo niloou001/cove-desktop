@@ -1,0 +1,26 @@
+WhatsApp Web no Chrome
+
+Abra Atualizar Cove na Area de Trabalho para carregar esta versao.
+Entre em https://web.whatsapp.com no Chrome com a conta que deseja usar.
+Diga: Jarvis, mande mensagem para Ester no WhatsApp Web dizendo Oi, tudo bem?
+Substitua Jarvis pelo nome salvo e Ester pelo contato da sua agenda.
+WhatsApp sem Web continua escolhendo o aplicativo Desktop.
+
+A Cove localiza a janela do Chrome no site correto ou abre uma nova janela,
+abre Nova conversa, pesquisa o contato salvo e exige um resultado unico.
+Verifica o nome no cabecalho antes de escrever e usa o mesmo tratamento
+de rascunhos, foco e envio unico dos outros controladores.
+Se estiver desconectado ou houver nomes repetidos, explica o dado pendente.
+Se houver varias janelas de WhatsApp Web, usa a ativa; sem uma ativa,
+pede para selecionar a conta. Nao le cookies nem automatiza seu login.
+
+O endereco e conferido pela barra nativa do Chrome. Enderecos parecidos,
+HTTP, porta diferente e uma barra falsa dentro de uma pagina sao recusados.
+Os alvos de mouse usam os monitores detectados, sem coordenadas fixas.
+
+Testes: reconhecimento do pedido e escolha Web/Desktop, controlador simulado,
+nome de voz e alteracao salva, seletores do navegador/site/contato em janela
+propria, endereco falso bloqueado, foco e protecao de rascunhos, abertura da UI.
+O ativador Python passou no teste de frases, sem usar o microfone.
+Nenhuma mensagem real foi enviada. A voz e o envio na conta real ainda
+precisam ser verificados na sessao interativa do usuario.

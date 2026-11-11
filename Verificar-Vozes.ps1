@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 foreach($file in @('Cove-Voice.ps1','Preparar-Vozes.ps1')){
  $tokens=$null;$problems=$null
  [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot $file),[ref]$tokens,[ref]$problems)|Out-Null

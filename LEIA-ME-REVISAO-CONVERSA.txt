@@ -1,0 +1,47 @@
+Revisao de conversa e mensagens
+
+1. Contexto
+Mantem contato, aplicativo e texto do ultimo pedido por ate 20 minutos.
+Aceita: agora diz pra ela que cheguei; manda tambem que estou a caminho;
+manda a mesma mensagem para NOME. Sem contexto, pergunta so o dado ausente.
+Tambem aceita mande essa resposta para NOME no Discord depois de voce pedir
+um texto a Cove. Nao inventa um contato quando nao ha referencia anterior.
+Perguntas de dados ausentes ficam guardadas por 10 minutos.
+Pedidos locais e resultados passaram a integrar o historico da conversa.
+A resposta de conversa usa explicacoes maiores quando voce pedir detalhes.
+
+2. Voz
+Se a escuta estiver pouco clara, conserva o pedido e pergunta Posso enviar?
+Voce pode dizer apenas sim ou nao, sem ditar a mensagem toda novamente.
+O nome do contato recente entra nas dicas de reconhecimento de voz.
+A escuta reabre mais cedo para respostas de dados ausentes e confirmacoes.
+
+3. Rascunhos
+Se o rascunho ja for o texto pedido, reutiliza sem redigitar.
+Se for outro texto, grava uma copia protegida pelo usuario Windows antes
+de substituir. As copias ficam em .cove-drafts e podem ser consultadas em
+Ajustes > Ver rascunhos preservados. O botao Copiar texto permite recuperar.
+Se a copia falhar, o rascunho original fica no aplicativo.
+Caracteres invisiveis vazios nao sao tratados como um rascunho real.
+Quando ValuePattern fornece um campo vazio, nao o troca pelo placeholder
+que outro controle de acessibilidade possa devolver.
+
+4. Resultado do envio
+Espera a interface atualizar e procura uma nova mensagem na area de conversa.
+Ignora o campo de escrita e mensagens identicas que ja existiam antes.
+Reconhece texto e documentos usados por editores Chromium.
+Rele o campo apos o envio mesmo quando o Discord recria o controle.
+So confirma envio quando observa campo limpo e nova mensagem na conversa.
+Nao afirma entrega ou leitura. Nao repete o envio automaticamente.
+
+Validacao
+Fluxos reais de Ask-Cove com conta e envios simulados; continuacoes de
+contexto; confirmacao simples por voz; reutilizacao e copia previa de
+rascunho; falha da copia sem sobrescrever; atualizacao atrasada; verificacao
+de nova mensagem em janela propria; interface de recuperacao e smoke test.
+Nenhuma mensagem real foi enviada nos testes.
+O teste de criptografia/recuperacao DPAPI nao pode ser concluido na sessao
+de ferramentas porque o Windows nao disponibiliza esse perfil de usuario.
+O fluxo protege o texto original se o Windows nao conseguir salvar a copia.
+
+Abra Atualizar Cove na Area de Trabalho para carregar esta revisao.

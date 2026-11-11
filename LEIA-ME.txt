@@ -1,0 +1,4 @@
+Para conectar sua conta, leia LEIA-ME-CHATGPT.txt. Abra Abrir-Cove.cmd e escolha Conversar > Ajustes > Continuar com ChatGPT. LEIA-ME-VOZ.txt descreve a alternativa com chave da API.Novas vozes neurais Serena e Atlas: veja LEIA-ME-VOZES-NATURAIS.txt. No Cove, use Ajustes > Preparar Serena e Atlas.
+Abrir aplicativos por voz: veja LEIA-ME-APPS.txt. Use o botao Apps para ver ou adicionar aplicativos.
+Escuta aprimorada local instalada: veja LEIA-ME-ESCUTA.txt.
+Frase de chegada conectada ao Cove Desktop: veja LEIA-ME-ATIVACAO.txt. Para iniciar agora, use Ativar Cove por voz.cmd na Area de Trabalho.

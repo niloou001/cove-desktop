@@ -1,0 +1,43 @@
+SERENA E ATLAS
+
+Serena: perfil feminino brasileiro, com ritmo mais lento e tranquilo.
+Atlas: perfil masculino brasileiro, sereno e formal, no estilo de assistente.
+Sao perfis originais do Cove, sem clonagem das vozes de Makima ou Jarvis.
+Os timbres base sao pf_dora e pm_santa do modelo Kokoro.
+A semelhanca com as referencias e apenas de caracteristicas gerais;
+nao ha promessa de reproduzir interpretacao, timbre ou sotaque dos atores.
+
+COMO PREPARAR
+Feche o Cove pelo menu > Sair e abra Abrir-Cove.cmd novamente.
+Em Conversar > Ajustes, clique Preparar Serena e Atlas.
+O download inicial pode levar alguns minutos e usa algumas centenas de MB.
+Voce tambem pode abrir Preparar-Vozes.cmd para acompanhar a instalacao.
+Nenhum Python do sistema, PATH, administrador ou chave de audio e necessario.
+O ambiente Python e as dependencias ficam dentro de assets\neural.
+O instalador testa a geracao das duas vozes antes de marcar a instalacao pronta.
+
+Depois, escolha Serena ou Atlas, clique Ouvir esta voz e, para salvar,
+clique Aplicar voz e microfone. A escolha continua disponivel nas proximas aberturas.
+No primeiro uso desta versao, Serena e a opcao inicial.
+
+O mecanismo neural funciona localmente apos o download. Nao envia textos a
+outro servico de voz e nao usa creditos da API de audio. A conversa com IA
+continua usando a conexao ChatGPT ou a API escolhida anteriormente.
+O primeiro audio pode demorar mais, pois o modelo precisa carregar.
+
+Se a preparacao falhar, abra Preparar-Vozes.cmd para ver o erro. Arquivos
+completos sao reaproveitados. As vozes do Windows continuam como alternativas.
+As amostras de teste ficam em assets\neural\serena-amostra.wav e atlas-amostra.wav.
+Audios de conversas reais sao transmitidos entre processos em memoria;
+nao sao salvos pelo mecanismo de voz.
+
+VALIDACAO
+Codigo C# e interface verificados no ambiente isolado do Codex.
+O download e o teste real do modelo precisam rodar na sua sessao do Windows:
+a conexao HTTPS de downloads esta indisponivel no ambiente isolado.
+Nao foi possivel audicionar as novas vozes aqui antes da instalacao.
+
+FONTES E LICENCAS
+Kokoro-82M: Apache-2.0, https://huggingface.co/hexgrad/Kokoro-82M
+kokoro-onnx: MIT, https://github.com/thewh1teagle/kokoro-onnx
+Python e dependencias conservam suas licencas incluidas na distribuicao.

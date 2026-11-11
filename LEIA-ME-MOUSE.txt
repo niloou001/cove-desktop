@@ -1,0 +1,45 @@
+Modo Mouse para calls do Discord
+
+Ativado como metodo padrao nesta instalacao.
+Reinicie: botao direito na bolinha > Sair, depois abra novamente.
+O pedido pode incluir tudo: Cove entre no servidor chamado CAPS e entra na call geral.
+
+Como funciona
+A Cove localiza o elemento pelo nome, move o ponteiro e faz um clique fisico.
+Expande pastas e categorias pelo mouse quando necessario. Se o servidor ja
+esta aberto, segue para o canal. Nao usa pesquisa e nao exige link no modo Mouse.
+Os nomes e os retangulos dos alvos ainda precisam estar acessiveis no Discord.
+Este modo troca a forma de clicar; nao equivale a uma IA que entende qualquer
+imagem da tela. Se nao identificar o alvo, nao clica em uma posicao adivinhada.
+Nao escolhe canais de texto como voz e nao confirma conexao sem evidencia.
+
+Dois monitores
+Foram detectados dois monitores 1920 x 1080, com o secundario em (-1920, 0).
+A enumeracao e refeita em tempo de execucao. Coordenadas negativas sao aceitas.
+Usa coordenadas fisicas e contexto DPI por thread para nao somar deslocamentos
+fixos ou tratar a segunda tela como se fosse a principal.
+Gaps fora dos retangulos dos monitores sao rejeitados como destino de clique.
+A janela maximizada e preservada ao receber foco.
+
+Interromper
+Esc interrompe. Mover manualmente o mouse ou trocar a janela ativa tambem
+interrompe o movimento em curso. Nao disputa o ponteiro com voce.
+Uma janela cobrindo o alvo ou um alvo que muda de posicao impede o clique.
+
+Ajustes
+Calls do Discord > metodo Mouse (dois monitores).
+Links salvos e Controles do Discord continuam como alternativas.
+Testar mouse nos monitores abre uma janela de teste em cada monitor, move e
+clica somente nos controles de teste, sem entrar numa call real. Esc cancela.
+O teste salva cove-mouse-test.log. O microfone pausa durante esse teste.
+
+Validacao
+Verificar-Mouse.ps1 testa coordenadas negativas, tamanhos diferentes, gaps,
+trajetoria e cancelamento sem usar a entrada fisica.
+Verificar-Roteamento-Mouse.ps1 verifica o pedido inteiro chegando ao controlador
+Mouse, sem usar link, IA ou controlador antigo; efeitos externos substituidos.
+Verificar-Mouse.ps1 -Physical e o teste real, tambem disponivel nos Ajustes.
+Nesta sessao de desenvolvimento, o Windows negou a leitura do ponteiro (codigo 5).
+Por isso os cliques reais e a entrada no Discord nao foram validados aqui.
+Nao foram alteradas permissoes do Windows para contornar esse bloqueio.
+Referencia de coordenadas: https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-screenscaling

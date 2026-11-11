@@ -54,6 +54,16 @@ namespace CoveApp {
   public volatile bool ListeningMode;
   public volatile bool ReplayWakeAudio;
   public volatile bool Ready;
+  public volatile string WakeName="Cove";
+  public static string NormalizeWake(string value){var text=new StringBuilder();foreach(char c in (value??"").Normalize(NormalizationForm.FormD)){if(System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)==System.Globalization.UnicodeCategory.NonSpacingMark)continue;text.Append(Char.IsLetterOrDigit(c)?Char.ToLowerInvariant(c):' ');}return System.Text.RegularExpressions.Regex.Replace(text.ToString(),@"\s+"," ").Trim();}
+  public static string[] WakeAliases(string name){
+   string normal=NormalizeWake(name);if(normal=="cove"||normal.Length==0)return new[]{"couve","cove","couvi"};
+   if(NormalizeWake((name??"").Replace(".",""))=="jarvis")return new[]{"jarvis","jarbas"};
+   string compact=NormalizeWake((name??"").Replace(".","").Replace("'",""));return compact==normal?new[]{normal}:new[]{normal,compact};
+  }
+  public static bool WakeMatches(string text,string name){string words=" "+NormalizeWake(text)+" ";foreach(string alias in WakeAliases(name))if(words.Contains(" "+alias+" "))return true;return false;}
+  static bool WakeJsonMatches(string json,string name){var obj=new JavaScriptSerializer().DeserializeObject(json) as Dictionary<string,object>;object value;if(obj==null)return false;if(obj.TryGetValue("text",out value)||obj.TryGetValue("partial",out value))return WakeMatches(Convert.ToString(value),name);return false;}
+  static IntPtr NewWakeRecognizer(IntPtr model,string name){var phrases=new List<string>(WakeAliases(name));phrases.Add("[unk]");return vosk_recognizer_new_grm(model,16000,Encoding.UTF8.GetBytes(new JavaScriptSerializer().Serialize(phrases)+"\0"));}
   public volatile float Level;
   volatile bool stopping;
   Thread worker;
@@ -61,7 +71,9 @@ namespace CoveApp {
   static void Check(uint code) { if(code!=0) throw new Exception("Microfone indisponivel (codigo " + code + "). Confira o microfone padrao e sua permissao nas Configuracoes do Windows."); }
   static string Utf8(IntPtr p) { if(p==IntPtr.Zero) return "{}"; int n=0; while(Marshal.ReadByte(p,n)!=0)n++; byte[] b=new byte[n]; Marshal.Copy(p,b,0,n);return Encoding.UTF8.GetString(b); }
   public Listener(string nativePath,string modelPath) : this(nativePath,modelPath,-1) {}
-  public Listener(string nativePath,string modelPath,int selectedDevice) {
+  public Listener(string nativePath,string modelPath,int selectedDevice) : this(nativePath,modelPath,selectedDevice,"Cove") {}
+  public Listener(string nativePath,string modelPath,int selectedDevice,string wakeName) {
+   WakeName=wakeName;
    deviceId=selectedDevice;
    SetDllDirectory(nativePath);
    worker=new Thread(()=>Run(modelPath)); worker.IsBackground=true; worker.Start();
@@ -77,7 +89,7 @@ namespace CoveApp {
     recognizer=vosk_recognizer_new(model,16000);
     if(recognizer==IntPtr.Zero)throw new Exception("Nao foi possivel iniciar o reconhecimento local.");
     vosk_recognizer_set_words(recognizer,1);
-    wake=vosk_recognizer_new_grm(model,16000,Encoding.UTF8.GetBytes("[\"couve\",\"[unk]\"]\0"));
+    string activeWakeName=WakeName;wake=NewWakeRecognizer(model,activeWakeName);
     if(wake==IntPtr.Zero)throw new Exception("Nao foi possivel iniciar a escuta do nome Cove.");
     int inputRate=16000,inputChannels=1;uint openCode=1;
     foreach(int rate in new[]{16000,48000,44100}) {
@@ -98,8 +110,12 @@ namespace CoveApp {
     }
     Check(waveInStart(mic)); Ready=true; Events.Enqueue("READY"); string lastPartial="";
     var leadIn=new Queue<byte[]>();int leadInBytes=0;
-    var utterance=new UtteranceBuffer();double noiseFloor=80;
+    var utterance=new UtteranceBuffer();double noiseFloor=80;int nextHeader=0;
     while(!stopping) {
+     if(activeWakeName!=WakeName){
+      string changed=WakeName;IntPtr replacement=NewWakeRecognizer(model,changed);if(replacement==IntPtr.Zero)throw new Exception("Nao consegui atualizar a escuta do nome.");
+      vosk_recognizer_free(wake);wake=replacement;activeWakeName=changed;wakeSent=false;
+     }
      if(Paused!=previousPaused||ListeningMode!=previousMode||UseNeural!=previousNeural) {
       bool replay=!Paused&&ListeningMode&&!previousMode&&ReplayWakeAudio;
       vosk_recognizer_reset(recognizer);vosk_recognizer_reset(wake);
@@ -107,9 +123,12 @@ namespace CoveApp {
       if(replay)foreach(byte[] audio in leadIn){if(UseNeural)utterance.Seed(audio);else vosk_recognizer_accept_waveform(recognizer,audio,audio.Length);}
       leadIn.Clear();leadInBytes=0;lastPartial="";previousPaused=Paused;previousMode=ListeningMode;previousNeural=UseNeural;wakeSent=false;
      }
-     foreach(IntPtr h in headers) {
+     // Read capture buffers in the order they were queued, including wraparound.
+     for(int pending=0;pending<headers.Count;pending++) {
+      IntPtr h=headers[nextHeader];
       var hd=(Header)Marshal.PtrToStructure(h,typeof(Header));
-      if((hd.flags&1)==0)continue;
+      if((hd.flags&1)==0)break;
+      nextHeader=(nextHeader+1)%headers.Count;
       if(!Paused && hd.recorded>0) {
        byte[] captured=new byte[(int)hd.recorded];Marshal.Copy(hd.data,captured,0,captured.Length);
        byte[] data=converter.Convert(captured);
@@ -126,8 +145,9 @@ namespace CoveApp {
         string json=Utf8(final?vosk_recognizer_result(active):vosk_recognizer_partial_result(active));
         if(previousMode){if(final){Events.Enqueue("FINAL:"+json);lastPartial="";}else if(json!=lastPartial){Events.Enqueue("PARTIAL:"+json);lastPartial=json;}}
         else {
-         if(!wakeSent&&json.IndexOf("couve",StringComparison.OrdinalIgnoreCase)>=0){Events.Enqueue("WAKE");wakeSent=true;}
-         if(final&&json.IndexOf("couve",StringComparison.OrdinalIgnoreCase)<0)wakeSent=false;
+         bool named=WakeJsonMatches(json,activeWakeName);
+         if(!wakeSent&&named){Events.Enqueue("WAKE");wakeSent=true;}
+         if(final&&!named)wakeSent=false;
         }
        }
       }else {Level=0;}

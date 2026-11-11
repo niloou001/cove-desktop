@@ -1,0 +1,41 @@
+ESCUTA APRIMORADA
+
+A escuta de frases usa agora Whisper small local, com faster-whisper 1.2.1,
+em portugues brasileiro. O Vosk continua apenas na ativacao pelo nome Cove.
+O Cove seleciona a escuta aprimorada automaticamente quando assets\asr\ready.txt
+existe e o modelo esta instalado. Confira em Ajustes > Microfone:
+Escuta aprimorada ativada.
+
+Feche o Cove em Sair e abra Abrir-Cove.cmd para carregar a nova versao.
+Diga Cove, espere a bolinha ficar verde e fale no seu ritmo. A captura espera
+cerca de um segundo de pausa antes de transcrever. Pode haver alguns segundos
+de espera, conforme o computador e a duracao da frase.
+Se a transcricao estiver em andamento, clique na bolinha para interromper
+e comecar outra fala. Pausar o microfone tambem interrompe a transcricao.
+
+O texto final reconhecido aparece em Conversar, em Ouvi.
+Nomes incertos de aplicativos continuam sujeitos a esclarecimento antes de abrir.
+Em uma confirmacao de aplicativo, a escuta recebe dicas para sim/nao, em vez
+de priorizar os nomes de apps. Isso ajuda a entender respostas curtas.
+
+O audio fica em memoria entre os processos locais e nao e enviado a um
+servico de transcricao, nem salvo pelo Cove. Perguntas transcritas seguem
+para a conexao de IA que voce escolheu; comandos de apps sao tratados localmente.
+Nao sao necessarios creditos de API para esta transcricao.
+
+Se precisar reinstalar, abra Preparar-Escuta.cmd. O modelo usa aproximadamente
+483 MB de download, alem das dependencias locais, e funciona em CPU.
+
+Testes realizados:
+- Carregamento real do modelo e ausencia de texto em silencio.
+- Captura de pausas, respostas curtas e emissao unica de cada fala.
+- Transcricao real de audios sintetizados: Discord, Spotify, Bloco de Notas e sim.
+- Transporte de PCM do programa C# ao processo Python e retorno de texto.
+- Interface, parser de aplicativos e compilacao.
+
+Os testes de audio usaram fala sintetizada, nao a voz ou microfone do usuario.
+A qualidade com sua voz, distancia e ruido ambiente precisa ser conferida
+na sessao normal do Windows.
+
+https://github.com/SYSTRAN/faster-whisper
+https://huggingface.co/Systran/faster-whisper-small

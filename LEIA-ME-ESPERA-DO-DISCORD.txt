@@ -1,0 +1,24 @@
+Correcao da espera antes de enviar
+
+O erro relatado era a mensagem generica usada quando a excecao tecnica vinha
+sem descricao. O log antigo nao permitia afirmar que a causa era velocidade:
+o caminho de mensagens nao inicializava DiagnosticFile. Isso foi corrigido.
+
+Agora a Cove:
+- aguarda o mesmo campo aparecer em tres leituras consecutivas antes de escrever;
+- busca de novo controles que foram recriados durante essa espera;
+- espera ate 12 segundos pelo carregamento, sem atrasar alem da estabilidade;
+- digita no Discord pelo teclado apos verificar o foco, evitando SetValue
+  em um editor Chromium que pode anunciar esse recurso sem aceita-lo;
+- espera ate 3 segundos pelo rascunho refletir o texto digitado antes de enviar;
+- nao redigita nem repete o clique em Enviar durante essas esperas;
+- preserva o rascunho existente e exige novamente o destinatario correto;
+- informa a etapa quando o Windows devolve uma excecao sem texto;
+- registra o diagnostico tambem na preparacao inicial do controle.
+
+Testes em janela propria simularam controles indisponiveis, editor recriado
+e atualizacao atrasada do texto. As verificacoes de contato, rascunho,
+nenhuma repeticao de envio e abertura da UI passaram.
+Nenhuma mensagem real foi enviada durante os testes.
+
+Abra Atualizar Cove para carregar esta correcao na instancia em uso.

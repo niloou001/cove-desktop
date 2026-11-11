@@ -11,5 +11,5 @@ if errorlevel 1 (
   pause
 )
 :launch
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -STA -ExecutionPolicy Bypass -File "%~dp0Cove-Voice.ps1"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0CoveLauncher.ps1"
 if errorlevel 1 pause

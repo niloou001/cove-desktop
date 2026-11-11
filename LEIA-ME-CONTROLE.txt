@@ -1,0 +1,54 @@
+Cove: controle do computador
+
+Feche o Cove pelo menu Sair e abra novamente no atalho Cove.
+Diga "comandos do computador" para ouvir os comandos disponiveis.
+Tambem e possivel digita-los no campo de conversa.
+
+Janelas, teclado e mouse
+  listar janelas
+  focar janela Bloco de notas
+  digite Ola, tudo bem?
+  pressione control s
+  pressione enter
+  pressione seta esquerda
+  mover mouse para 500 300
+  clicar
+  clique direito
+  duplo clique
+  rolar para baixo
+  rolar para cima
+  minimizar janela
+  maximizar janela
+  restaurar janela
+
+Escolha a janela com "focar janela" antes de digitar, clicar ou rolar.
+Se houver titulos parecidos, use o titulo completo de "listar janelas".
+As coordenadas do mouse sao em pixels da tela, incluindo monitores adicionais.
+Texto depois de "digite" e literal, nao vira comando de terminal.
+Teclas e cliques podem acionar botoes do aplicativo escolhido, incluindo enviar e salvar.
+
+Arquivos: substitua os exemplos pelos caminhos completos do seu computador.
+  criar pasta C:\Users\seu nome\Documents\Notas
+  criar arquivo C:\Users\seu nome\Documents\Notas\nota.txt com texto Minha primeira nota
+  editar arquivo C:\Users\seu nome\Documents\Notas\nota.txt com texto Novo conteudo
+  adicionar ao arquivo C:\Users\seu nome\Documents\Notas\nota.txt com texto Outra linha
+  mover arquivo C:\Users\seu nome\Documents\Notas\nota.txt para C:\Users\seu nome\Documents\Notas\outra.txt
+  excluir arquivo C:\Users\seu nome\Documents\Notas\outra.txt
+
+Criacao e edicao de texto: txt, md, csv, json e log; ate 12000 caracteres por comando.
+Criar arquivo nunca sobrescreve um existente. Editar substitui o conteudo.
+Editar e adicionar guardam o original ao lado com sufixo .cove-backup-<identificador>.
+Mover tambem pode renomear, e nunca sobrescreve o destino.
+Excluir arquivo envia para a Lixeira do Windows. Nao ha exclusao permanente de reserva.
+Nao ha exclusao recursiva de pastas neste conjunto de comandos.
+
+O acesso usa a conta Windows atual e as permissoes de cada aplicativo e disco.
+Nao altera permissoes do Windows nem executa como administrador.
+O aplicativo nao observa a tela nem decide sozinho onde clicar.
+Os comandos sao tratados localmente, fora das respostas da IA.
+Comando de controle por voz com baixa confianca pede repeticao antes de agir.
+Os comandos atuais sao explicitos; pedidos livres podem ir para a conversa da IA.
+
+Validacao: Verificar-Controle.ps1 testa arquivos temporarios de verdade e
+verifica o roteamento de teclado/mouse sem enviar entradas aos seus aplicativos.
+O controle real de um aplicativo deve ser experimentado em uma janela de teste.

@@ -1,0 +1,28 @@
+ABRIR APLICATIVOS POR VOZ
+
+Feche o Cove pelo menu > Sair e abra Abrir-Cove.cmd novamente.
+Diga Cove, espere a bolinha ficar verde e fale: abre o Discord.
+Tambem pode clicar na bolinha para falar ou digitar o pedido em Conversar.
+
+Exemplos:
+ - abre o Discord
+ - pode abrir o Spotify por favor
+ - abra a calculadora
+ - abra o bloco de notas
+ - quais aplicativos voce pode abrir
+
+O Cove encontra automaticamente alguns aplicativos instalados no menu Iniciar.
+Discord foi encontrado neste computador. A lista exata fica no botao Apps.
+Para outro aplicativo, clique Apps > Escolher aplicativo ou atalho,
+escolha um .exe ou .lnk, de um nome facil de dizer e clique Adicionar.
+Remover cadastro retira o comando do Cove, sem desinstalar o aplicativo.
+
+Abertura funciona como comando local e nao precisa consultar a IA nem usar
+creditos. O reconhecimento de voz precisa estar configurado e funcionando.
+O texto reconhecido nao e executado no terminal. Os pedidos so resolvem um
+app cadastrado; argumentos livres e comandos compostos nao sao executados.
+Esta versao abre aplicativos. Nao envia mensagens nem controla o conteudo deles.
+
+Validado: parser de comandos, negacoes, cadastro, resolucao de caminhos e
+interface. Os testes nao abriram aplicativos. A abertura na sua tela precisa
+ser conferida na sua sessao do Windows, fora do ambiente isolado do Codex.

@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'CoveApps.ps1')
 foreach($file in @('CoveApps.ps1','CoveAppPanel.ps1','Cove-Voice.ps1')){
  $tokens=$null;$problems=$null
@@ -11,6 +11,13 @@ foreach($phrase in @('abre o discord','abra discord','pode abrir o Discord para 
 }
 foreach($phrase in @('nao abra o discord','como abrir o discord','o discord esta aberto?','feche o discord','o site diz abre o discord')){
  if(Get-CoveAppRequest $phrase){throw ('Pedido sem autorizacao direta foi aceito: '+$phrase)}
+}
+foreach($phrase in @('quero usar o Discord','Cove, poderia abrir meu Discord por favor?','eu queria que você abrisse o Discord','dá pra você abrir o Discord?','liga o Discord pra mim','me bota o Discord aí','abre pra mim o Discord')){
+ $request=Get-CoveAppRequest $phrase
+ if(-not $request -or $request.Target -ne 'discord'){throw ('Pedido natural de app falhou: '+$phrase)}
+}
+foreach($phrase in @('quero saber como abrir o discord','pode nao abrir o discord','Joao disse para abrir o discord')){
+ if(Get-CoveAppRequest $phrase){throw ('Frase sem pedido de abrir foi aceita: '+$phrase)}
 }
 $originalCache=$script:coveAppsCache
 $originalFile=$script:coveAppsFile

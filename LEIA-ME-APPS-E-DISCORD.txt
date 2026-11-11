@@ -1,0 +1,114 @@
+Apps e calls do Discord
+
+Feche a Cove em Sair e abra novamente pelo atalho.
+
+Apps
+Diga abre o CapCut, abre o Steam, abre o Roblox etc.
+O Cove encontra atalhos do menu Iniciar e da Area de Trabalho,
+apps da Microsoft Store e atalhos de jogos Steam/Epic/Roblox.
+O botao Apps mostra os programas encontrados.
+Apps portateis: cadastre um exe no botao Apps ou digite
+abra "C:\caminho\Meu Programa.exe"
+
+Entrar na call escolhendo servidor e canal pela voz
+Voce: Cove, entrar na call.
+Cove: Em qual servidor do Discord?
+Voce: Amigos.
+Cove: Qual e o nome da call no servidor Amigos?
+Voce: Geral.
+
+A Cove volta a ouvir automaticamente depois de cada pergunta.
+Nao e necessario repetir Cove antes das respostas.
+Tambem funciona: entrar na call no servidor Amigos.
+Nesse caso, ela so pergunta o nome do canal.
+Ou diga tudo: entrar na call Geral no servidor Amigos.
+Diga cancelar para abandonar a escolha. A escolha expira em 90 segundos.
+
+A Cove abre/ativa o Discord Desktop e procura o servidor na lista de servidores.
+A entrada em calls nao abre pesquisa nem digita nomes no Discord.
+Ela percorre a lista de servidores e a lista de canais, expande pastas/categorias
+e aciona somente o canal identificado como voz.
+Nao depende do canal estar previamente visivel na barra lateral.
+O resultado do canal precisa corresponder ao servidor escolhido.
+Nomes parecidos ou repetidos nao sao escolhidos automaticamente.
+O Discord precisa estar conectado a sua conta, que deve participar do servidor
+e ter permissao para acessar a call.
+A interface de acessibilidade e o foco do Windows precisam estar disponiveis.
+Se o Windows impedir o foco ou o Discord nao expuser as listas de navegacao,
+a Cove informa a falha; ela nao confirma uma conexao que nao conseguiu verificar.
+Nao utiliza tokens da sua conta, API privada ou leitura de mensagens.
+
+Call padrao por link continua opcional:
+configurar call Geral com link https://discord.com/channels/ID-DO-SERVIDOR/ID-DO-CANAL
+Depois diga: entrar na call padrao.
+O pedido entrar na call, sem padrao, sempre inicia a escolha do servidor.
+
+Validacao: Verificar-Discord.ps1 verifica a conversa completa, cancelamento,
+expiracao, ausencia de efeitos na previa e discriminacao de servidor/canal.
+O SmokeTest verifica a integracao da interface. Esses testes nao conectam
+a conta a uma call real. A entrada real deve ser experimentada no seu Discord.
+
+Pedidos em linguagem natural
+Voce nao precisa repetir exatamente as frases de exemplo.
+Aceita formas como quero usar o Discord, me coloca na call,
+me bota na Geral do servidor Amigos, vamos pra call no servidor Amigos,
+vai no servidor Amigos e entra na call Geral.
+A Cove aproveita o servidor ou canal ja informado durante a escolha e
+pergunta apenas o dado que falta. Respostas como e a Geral e pode ser a Geral
+tambem funcionam. Enfeites, artigos e numeracao nos nomes sao tolerados
+quando ha um unico resultado. Um nome exato tem prioridade.
+Pedidos negativos, citacoes e perguntas sobre como fazer nao executam acoes.
+Os testes locais cobrem essas variacoes sem abrir chamadas reais.
+
+Correcao de encaminhamento de pedidos
+Pedidos naturais de entrada em call tambem passam por um reconhecimento
+local de intencao. Quando a frase indica essa acao, o pedido permanece no
+controle do Discord e pede apenas servidor/canal ausentes, em vez de ir
+para uma resposta de texto da IA explicando que outro aplicativo deve agir.
+Variantes de transcricao como cal, cau e no dc tambem sao reconhecidas
+no contexto de um pedido de entrada.
+O teste Verificar-Roteamento-Discord.ps1 passa pela funcao real Ask-Cove,
+substitui os efeitos externos e verifica que a IA nao e chamada para
+12 formas de pedir a entrada, preservando os destinos mencionados.
+Esse teste nao substitui a validacao de uma conexao real no Discord.
+
+Para carregar as alteracoes, use o botao direito na bolinha > Sair,
+e abra novamente pelo atalho. O X da janela de conversa apenas a oculta.
+
+Pedido completo CAPS / geral
+Cove entre no servidor chamado CAPS e entra na call geral
+O termo chamado e identificado como parte da frase, e nao do nome do servidor.
+Servidor CAPS e canal geral sao aproveitados em uma unica acao, sem perguntar
+de novo os dados que ja foram informados. CAPS foi adicionado ao vocabulario local.
+
+Verificar-Navegacao-Discord.ps1 testa os controles reais de acessibilidade de
+uma janela de teste: seleciona CAPS e o canal de voz geral; nao toca no servidor
+OUTRO nem no canal de texto geral. Nao se conecta ao Discord real.
+Falhas de navegacao do aplicativo geram cove-discord-diagnostico.log localmente,
+com a etapa e os controles das listas de navegacao. Nao contem audio, tokens ou
+mensagens de conversa. Esse arquivo e excluido do Git pelas regras de logs.
+
+Correcao baseada no diagnostico do Discord real
+A janela CAPS (servidor) ja estava aberta, mas a navegacao tentava selecionar
+o servidor outra vez. A Cove agora reconhece esse contexto e vai direto ao
+canal de voz. Pastas rotuladas como pasta, mesmo sem o padrao de expansao
+Windows, sao abertas por sua acao acessivel e a lista e examinada de novo.
+Falhas de padroes de rolagem nao interrompem a procura. Se necessario, o clique
+usa o elemento identificado e confere o controle no ponto antes de clicar.
+Falhas de automacao agora tambem sao faladas, e o diagnostico registra o tipo
+de erro e a etapa para evitar mensagens vazias.
+Verificar-Navegacao-Discord.ps1 cobre servidor visivel, ja aberto e em pasta
+fechada, com os rotulos reais do canal de voz e do canal de texto.
+
+Correcao de controles recriados pelo Discord
+O diagnostico real apontou ElementNotAvailableException (0x80040201),
+que indica uma referencia antiga da interface, e nao permissao negada.
+A navegacao agora obtem novamente a janela, as listas e os itens depois de
+cada abertura de pasta, categoria ou rolagem. A selecao de um servidor e
+avaliada antes de expandir pastas, para nao invalidar um resultado ja encontrado.
+Leituras temporariamente indisponiveis sao repetidas com limite de tempo.
+Listas vazias durante a atualizacao recebem uma pequena tolerancia, sem atraso
+adicional quando o item ja esta disponivel. A pesquisa continua desativada.
+O teste de navegacao agora tambem remove e recria os controles de servidor e
+canal, inclusive com um intervalo de lista vazia. Sao cenarios simulados;
+nao ha conexao ao Discord real durante a verificacao.

@@ -1,0 +1,30 @@
+Melhorias no entendimento da fala
+
+Feche o Cove em Sair e abra novamente para aplicar.
+O microfone configurado nesta instalacao foi conferido: Fifine, dispositivo 0.
+Nao foi gravado nem enviado audio do seu microfone nestes testes.
+
+O que mudou:
+- Os trechos capturados sao lidos na ordem correta, inclusive quando os buffers voltam ao inicio.
+- A transcricao recebe uma lista curta de palavras relevantes, em vez dos nomes de 146 aplicativos.
+- Audio baixo recebe ganho moderado e limitado; audio normal e preservado.
+- Desvio constante de sinal e estimado nos trechos mais quietos, sem remover a media da fala inteira.
+- Em Ajustes, Palavras e nomes que voce usa permite informar nomes de amigos, jogos e canais, separados por virgulas.
+- Clique em Aplicar voz e microfone para salvar esse vocabulario. Ele fica local no arquivo de preferencias de audio.
+
+Velocidade:
+O mesmo modelo e a pausa de 0,8 segundo foram mantidos.
+Nao foi adicionada uma segunda transcricao a cada pedido.
+Nos testes sinteticos, o tratamento extra custou cerca de 0,4 ms.
+A transcricao completa levou entre 2,6 e 3,5 segundos neste computador.
+Os milissegundos medidos no cache de voz sao para um audio ja gerado,
+nao para entender uma fala nova nem para responder a uma pergunta pela internet.
+
+Validacao:
+testar_entendimento.py verifica quatro frases sinteticas em volume normal e baixo,
+incluindo nomes de apps e a resposta curta sim. Tambem verifica silencio, desvio
+constante de sinal e ruido, que nao devem virar comandos.
+Os oito casos de fala passaram. Esses testes nao medem a precisao com sua voz real.
+
+Se ainda trocar palavras, confira o texto Ouvi e anote um exemplo do que disse
+e do que foi transcrito. Isso permite ajustar o vocabulario com base no erro real.

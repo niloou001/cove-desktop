@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'CoveInstance.ps1')
 foreach($name in @('CoveInstance.ps1','Instalar-Ativacao.ps1','Cove-Voice.ps1')){
  $tokens=$null;$errors=$null

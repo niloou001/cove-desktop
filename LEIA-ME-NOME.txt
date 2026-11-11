@@ -1,0 +1,14 @@
+Atualize pelo atalho Atualizar Cove na Area de Trabalho.
+Em Ajustes, use Nome exibido da assistente e Salvar nome.
+O nome muda no cabecalho, nos baloes, na apresentacao e na chamada por voz.
+E salvo para as proximas aberturas. Restaurar Cove volta ao nome original.
+Aceita de 1 a 24 caracteres e rejeita nomes vazios ou caracteres de codigo.
+A palavra de ativacao acompanha o nome salvo, sem reiniciar a assistente aberta.
+O nome Jarvis inclui a alternativa fonetica jarbas para o modelo portugues.
+O ativador externo tambem foi atualizado. Reinicie Ativar Cove por voz uma
+vez para carregar seu codigo novo, ou aguarde o proximo login no Windows.
+Com a assistente fechada, a frase do ativador fica oi NOME, papai chegou.
+Arquivos, atalhos e identidade tecnica das janelas permanecem compativeis
+com o atualizador, os comandos locais e o historico ja existente.
+Testes: validacao, gravacao atomica, releitura e callbacks reais salvar/restaurar,
+baloes com nome personalizado e teste de abertura da interface.

@@ -1,10 +1,26 @@
 # Cove Desktop
 
-Assistente de voz para Windows com uma pequena interface flutuante, conversa com IA e comandos locais para abrir aplicativos.
+Assistente de voz para Windows com interface flutuante, conversa com IA, aplicativos, jogos e automações locais no Discord e WhatsApp.
+
+## Versão atual
+
+- Nome, cor e aparência configuráveis; o nome salvo também configura a chamada por voz.
+- Conversa em balões, contexto recente e confirmações curtas quando a transcrição estiver incerta.
+- Jogos instalados da Steam e Epic, atalhos do Windows e executáveis cadastrados.
+- Navegação em servidores e canais de voz do Discord, chamadas privadas e mensagens para contatos.
+- Mensagens no WhatsApp Desktop e no WhatsApp Web pelo Chrome, com busca por nome salvo na agenda.
+- Controle de mouse com coordenadas dos monitores detectados, incluindo monitores à esquerda do principal.
+- Rascunhos anteriores preservados em cópias protegidas pelo usuário do Windows e recuperáveis nos Ajustes.
+- Horário e data do Windows, temperatura por cidade via Open-Meteo, manchetes da BBC News Brasil e pesquisas no Chrome.
+- Inicializador que identifica a versão em execução e permite recarregar os arquivos atualizados.
+
+As automações verificam destinatário e campo de escrita antes de enviar. O envio não é repetido automaticamente quando o resultado é incerto. O reconhecimento depende do modelo local e da pronúncia; as integrações dependem dos controles expostos pela versão do aplicativo/site e das permissões normais do Windows.
+
+Os testes de mensagens usam controladores simulados e janelas próprias. Não foram feitos envios reais para contatos durante a validação. Não há garantia de entrega ou leitura de mensagens.
 
 ## Recursos
 
-- Ativação pelo nome **Cove**, com Vosk local.
+- Ativação pelo nome configurado nos Ajustes, com Vosk local; **Cove** é o padrão.
 - Transcrição das perguntas em português com **Whisper small**, executado localmente por faster-whisper.
 - Vozes neurais locais **Serena**, feminina e calma, e **Atlas**, masculina e formal, com Kokoro. São perfis próprios, sem clonagem de personagens ou atores.
 - Seleção de microfone, indicador de volume e visualização do texto reconhecido.
@@ -23,7 +39,9 @@ Não é necessário instalar Python no sistema, alterar o PATH ou executar como 
 
 ## Preparar e abrir
 
-1. Baixe o ZIP do repositório e extraia todos os arquivos. Se você baixou o repositório completo, entre na pasta **desktop**.
+Para atualizar uma instalação existente, substitua apenas os arquivos de código e execute **Atualizar-Cove.cmd** na pasta do aplicativo. Preserve seus arquivos de configuração e `assets/`. Se usar o ativador separado de inicialização, execute **Ativar-Cove-Por-Voz.cmd** uma vez para instalar o ouvinte atualizado.
+
+1. Baixe o ZIP do repositório e extraia todos os arquivos. Abra a pasta que contém **Abrir-Cove.cmd**; no projeto integrado Cove Voice, ela se chama **desktop**.
 2. Abra **Abrir-Cove.cmd**. Na primeira vez, ele prepara o reconhecimento do nome em português.
 3. Para instalar as vozes neurais, abra **Preparar-Vozes.cmd** ou use **Conversar → Ajustes → Preparar Serena e Atlas**. Espere a instalação e os testes terminarem.
 4. Abra **Preparar-Escuta.cmd** para instalar o reconhecimento aprimorado de frases. Essa etapa aproveita o ambiente Python preparado no passo anterior.
@@ -62,7 +80,7 @@ Após esta atualização, encerre instâncias de versões anteriores do Cove uma
 
 ### Pedir algo ao Cove
 
-Diga **“Cove”**, espere a bolinha ficar verde e faça seu pedido. Pare de falar para enviar; a captura espera cerca de um segundo de pausa. A transcrição pode levar alguns segundos, conforme o computador.
+Diga o nome configurado, espere a bolinha ficar verde e faça seu pedido. Pare de falar para enviar. A transcrição pode levar alguns segundos, conforme o computador.
 
 Também é possível clicar na bolinha para falar sem dizer o nome, ou digitar na janela **Conversar**.
 
@@ -79,7 +97,22 @@ quais aplicativos voce pode abrir
 
 **Apps** mostra os programas encontrados e permite cadastrar um arquivo `.exe` ou atalho `.lnk` com um nome fácil de falar. **Abrir selecionado** testa a abertura sem depender do reconhecimento de voz.
 
-Esses comandos são locais, não consultam a IA e não interpretam a frase como um comando de terminal. O Cove abre os aplicativos, mas não envia mensagens nem controla seu conteúdo.
+Comandos reconhecidos são executados por controladores locais, sem interpretar o texto como comandos de terminal. Pedidos de mensagem fora das formas locais usam a conexão de IA para extrair contato, aplicativo e conteúdo; os dados são validados antes de chegar ao controlador.
+
+Exemplos:
+
+- “Abra o jogo NOME.”
+- “Entre no servidor NOME e na call Geral.”
+- “Mande mensagem para CONTATO no Discord dizendo Oi, tudo bem?”
+- “Mande mensagem para CONTATO no WhatsApp Web dizendo Estou chegando.”
+- “Agora diz pra ela que cheguei.”
+- “Mande essa resposta para CONTATO no Discord.”
+- “Que horas são?” / “Qual a temperatura em Curitiba, Paraná?”
+- “Pesquise sobre astronomia no Chrome.”
+
+Para WhatsApp Web, deixe sua conta conectada em `https://web.whatsapp.com` no Chrome. Contatos com nomes repetidos exigem identificação mais precisa. WhatsApp sem “Web” seleciona o aplicativo Desktop. A Cove não faz login por você nem lê cookies do navegador.
+
+Se já existir outro rascunho no campo, uma cópia é protegida com DPAPI antes da substituição. Consulte **Ajustes → Ver rascunhos preservados** para recuperar o texto. Se a proteção falhar, o original é mantido no aplicativo. Esc ou trocar de janela interrompe o controle.
 
 ## Controles e diagnóstico
 
@@ -98,7 +131,7 @@ Se um preparador falhar, execute seu `.cmd` para ler a mensagem completa. Downlo
 
 O reconhecimento do nome, a transcrição e a síntese das vozes locais processam áudio no computador. O áudio das conversas não é salvo pelo Cove nem enviado a um serviço de transcrição. As amostras geradas nos testes ficam em `assets/` e não contêm gravações do usuário.
 
-Perguntas transcritas e o histórico recente da conversa do Cove são enviados à conexão de IA escolhida. O histórico fica em memória e pode ser limpo pelo botão **Limpar** ou ao encerrar o programa.
+Perguntas transcritas e o histórico recente da conversa são enviados à conexão de IA escolhida. A interpretação de mensagens não reconhecidas localmente recebe o pedido atual. O histórico fica em memória; uma cópia protegida pode ser usada durante a recarga do aplicativo. O botão **Limpar** limpa a conversa atual. Rascunhos preservados ficam protegidos separadamente em `.cove-drafts/` e não são publicados.
 
 As credenciais locais são protegidas para o usuário atual do Windows com DPAPI. O `.gitignore` exclui a conexão da conta, a chave, os caminhos de apps cadastrados, as preferências, os modelos, os áudios e os registros. Não remova essas exclusões antes de revisar os arquivos.
 
@@ -113,6 +146,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Verificar-ChatGPT.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Verificar-Escuta.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Verificar-Vozes.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Verificar-Ativacao.ps1
+powershell -NoProfile -STA -ExecutionPolicy Bypass -File .\Verificar-Mensagens.ps1
+powershell -NoProfile -STA -ExecutionPolicy Bypass -File .\Verificar-Planejador-Mensagens.ps1
+powershell -NoProfile -STA -ExecutionPolicy Bypass -File .\Verificar-Envio-Seguro.ps1
+powershell -NoProfile -STA -ExecutionPolicy Bypass -File .\Verificar-WhatsApp-Web.ps1
+powershell -NoProfile -STA -ExecutionPolicy Bypass -File .\Verificar-Nome-Voz.ps1
 powershell -NoProfile -STA -ExecutionPolicy Bypass -File .\Cove-Voice.ps1 -SmokeTest
 ```
 

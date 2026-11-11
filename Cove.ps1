@@ -1,4 +1,4 @@
-param([switch]$SmokeTest)
+﻿param([switch]$SmokeTest)
 $ErrorActionPreference = 'Stop'
 if (-not $SmokeTest) {
     $native = Join-Path $PSScriptRoot 'assets\native\libvosk.dll'

@@ -1,14 +1,31 @@
-param([switch]$SmokeTest,[switch]$ListenOnStart)
+﻿param([switch]$SmokeTest,[switch]$ListenOnStart,[switch]$OpenDiscordSettings)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'CoveInstance.ps1')
+. (Join-Path $PSScriptRoot 'CoveRuntime.ps1')
+$script:buildId=Get-CoveBuildId $PSScriptRoot
+$script:selfRestart=$false
 $instanceChannel=$null
 if(-not $SmokeTest){
- $instanceChannel=Open-CoveInstanceChannel -Identity $PSScriptRoot -Listen:$ListenOnStart
+ $instanceChannel=Open-CoveInstanceChannel -Identity $PSScriptRoot -Listen:$ListenOnStart -DiscordSettings:$OpenDiscordSettings
  if($instanceChannel.AlreadyRunning){Close-CoveInstanceChannel $instanceChannel;return}
 }
 . (Join-Path $PSScriptRoot 'CoveApps.ps1')
+. (Join-Path $PSScriptRoot 'CoveIdentity.ps1')
+. (Join-Path $PSScriptRoot 'CoveOnline.ps1')
+. (Join-Path $PSScriptRoot 'CoveFiles.ps1')
+. (Join-Path $PSScriptRoot 'CoveControl.ps1')
+. (Join-Path $PSScriptRoot 'CoveDiscord.ps1')
+. (Join-Path $PSScriptRoot 'CoveMessages.ps1')
+. (Join-Path $PSScriptRoot 'CoveMessagePlanner.ps1')
+. (Join-Path $PSScriptRoot 'CoveDiscordLinks.ps1')
+. (Join-Path $PSScriptRoot 'CoveAppearance.ps1')
 . (Join-Path $PSScriptRoot 'CoveAppPanel.ps1')
+. (Join-Path $PSScriptRoot 'CoveConversation.ps1')
+. (Join-Path $PSScriptRoot 'CoveDrafts.ps1')
+Add-Type -Path @((Join-Path $PSScriptRoot 'CoveComputer.cs'),(Join-Path $PSScriptRoot 'CoveDiscord.cs'),(Join-Path $PSScriptRoot 'CoveMessaging.cs')) -ReferencedAssemblies UIAutomationClient,UIAutomationTypes,WindowsBase,System.Security
+$script:discordTask=$null;$script:discordCancel=$null
 Add-Type -AssemblyName PresentationFramework,PresentationCore,WindowsBase,System.Speech,System.Security,System.Net.Http,System.Web.Extensions
+Add-Type -Path (Join-Path $PSScriptRoot 'CoveOnline.cs') -ReferencedAssemblies System.Net.Http,System.Web.Extensions,System.Xml
 trap { if($SmokeTest){Write-Output $_.Exception.Message;exit 1};try { [Windows.MessageBox]::Show($_.Exception.Message,'Cove: erro') | Out-Null } catch {}; exit 1 }
 Add-Type -Path @((Join-Path $PSScriptRoot 'CoveCore.cs'),(Join-Path $PSScriptRoot 'CoveASR.cs')) -ReferencedAssemblies System.Net.Http,System.Web.Extensions
 $transcriber=New-Object CoveApp.CoveTranscription($PSScriptRoot)
@@ -16,9 +33,9 @@ $script:transcribeTask=$null;$script:asrSetup=$null;$script:asrStatus=$null
 Add-Type -Path (Join-Path $PSScriptRoot 'CoveChatGPT.cs') -ReferencedAssemblies System.Net.Http,System.Web.Extensions,System.Security
 Add-Type -Path @((Join-Path $PSScriptRoot 'CoveVoice.cs'),(Join-Path $PSScriptRoot 'CoveNeural.cs')) -ReferencedAssemblies System.Web.Extensions
 $audioFile=Join-Path $PSScriptRoot 'cove-audio.json'
-$script:micId=-1;$script:voiceId='';$script:speechTask=$null
+$script:micId=-1;$script:voiceId='';$script:speechTask=$null;$script:vocabulary=''
 $script:micMeter=$null;$script:micHint=$null;$script:lastHeard='';$script:voiceSetup=$null;$script:voiceHint=$null
-if(Test-Path -LiteralPath $audioFile){try{$audioSettings=Get-Content -LiteralPath $audioFile -Raw|ConvertFrom-Json;$script:micId=[int]$audioSettings.Microphone;$script:voiceId=[string]$audioSettings.Voice}catch{}}
+if(Test-Path -LiteralPath $audioFile){try{$audioSettings=Get-Content -LiteralPath $audioFile -Raw|ConvertFrom-Json;$script:micId=[int]$audioSettings.Microphone;$script:voiceId=[string]$audioSettings.Voice;$script:vocabulary=[string]$audioSettings.Vocabulary}catch{}}
 $script:voices=@([CoveApp.CoveSpeech]::Voices())
 if(-not $audioSettings -or -not $audioSettings.PresetVersion){$script:voiceId='kokoro:serena'}
 if(-not ($script:voices|Where-Object{$_.Id -eq $script:voiceId})){
@@ -38,6 +55,10 @@ if(-not $SmokeTest){
 }
 $script:listener=$null; $script:task=$null; $script:cancel=$null
 $script:history=@(); $script:state='Idle'; $script:muted=$false
+$script:streamActive=$false;$script:streamHadText=$false;$script:suppressSpeech=$false;$script:streamBuffer=''
+$script:messagePlanPending=$false
+$script:speechQueue=New-Object 'Collections.Generic.Queue[string]'
+$script:warmTasks=@()
 $script:listenUntil=[datetime]::MinValue; $script:cooldown=[datetime]::MinValue
 $script:pendingQuestion=''; $script:lastError=''; $script:quitting=$false
 $script:pendingAppName='';$script:pendingAppUntil=[datetime]::MinValue;$script:resumeListeningAt=[datetime]::MinValue;$script:listenAfterSpeech=$false
@@ -47,7 +68,7 @@ if (-not $script:key -and (Test-Path -LiteralPath $keyFile)) {
  try { $raw=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($keyFile),$null,[Security.Cryptography.DataProtectionScope]::CurrentUser); $script:key=[Text.Encoding]::UTF8.GetString($raw); [Array]::Clear($raw,0,$raw.Length) } catch {}
 }
 $window=New-Object Windows.Window
-$window.Title='Cove';$window.Width=176;$window.Height=192
+$window.Title='Cove';$window.Width=190;$window.Height=214
 $window.WindowStyle='None';$window.ResizeMode='NoResize';$window.AllowsTransparency=$true
 $window.Background='Transparent';$window.Topmost=$false;$window.ShowActivated=$false
 $window.FontFamily='Segoe UI'
@@ -55,79 +76,53 @@ $window.Left=[Windows.SystemParameters]::WorkArea.Right-$window.Width-26
 $window.Top=[Windows.SystemParameters]::WorkArea.Bottom-$window.Height-26
 $theme=[Windows.Markup.XamlReader]::Parse([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Cove-Theme.xaml')))
 $window.Resources.MergedDictionaries.Add($theme)
+$script:appearance=[pscustomobject]@{File=(Join-Path $PSScriptRoot 'cove-appearance.json');Hex='';Palette=$null}
+$script:appearance.Hex=Get-CoveAccent $script:appearance.File
+$script:appearance.Palette=Set-CoveAccent $window $script:appearance.Hex
 $panel=New-Object Windows.Controls.StackPanel
 $orb=New-Object Windows.Controls.Button
-$orb.Width=88;$orb.Height=88;$orb.Margin='16,18,16,12';$orb.Content='';$orb.Foreground='#EBF8FF';$orb.FontSize=14
-$orb.Template=[Windows.Markup.XamlReader]::Parse(@'
-<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="Button">
-<Grid RenderTransformOrigin="0.5,0.5">
- <Grid.RenderTransform><ScaleTransform x:Name="Breath"/></Grid.RenderTransform>
- <Ellipse Fill="{TemplateBinding Background}"/>
- <Ellipse><Ellipse.Fill><RadialGradientBrush Center="0.32,0.22" GradientOrigin="0.25,0.15" RadiusX="0.85" RadiusY="0.85"><GradientStop Color="#D0E9FFF9" Offset="0"/><GradientStop Color="#7056B8DD" Offset="0.35"/><GradientStop Color="#30152955" Offset="0.72"/><GradientStop Color="#C0091128" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
- <Ellipse Margin="1" StrokeThickness="1"><Ellipse.Stroke><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#B3DFFCF9" Offset="0"/><GradientStop Color="#125AA9DF" Offset="0.55"/><GradientStop Color="#707D88EE" Offset="1"/></LinearGradientBrush></Ellipse.Stroke></Ellipse>
- <Ellipse Width="48" Height="22" VerticalAlignment="Top" Margin="0,9,9,0" Opacity="0.35"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#E4FFF9"/><GradientStop Color="#00E4FFF9" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
- <Ellipse Margin="4" StrokeThickness="1.4" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
- <Ellipse.RenderTransform><RotateTransform x:Name="HaloTurn"/></Ellipse.RenderTransform>
- <Ellipse.Stroke><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#00A7F4EC" Offset="0.15"/><GradientStop Color="#00A7F4EC" Offset="0.48"/><GradientStop Color="#B0C2FFF6" Offset="0.8"/><GradientStop Color="#00A7F4EC" Offset="1"/></LinearGradientBrush></Ellipse.Stroke>
-</Ellipse>
-<Grid Width="58" Height="30" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
- <Grid.RenderTransform><ScaleTransform x:Name="VoiceWave" ScaleY="0.55"/></Grid.RenderTransform>
- <Path Data="M 3,15 C 12,-1 16,31 25,15 S 38,-1 45,15 S 51,23 55,15" Stroke="#55B9F5EC" StrokeThickness="4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
- <Path Data="M 3,15 C 12,-1 16,31 25,15 S 38,-1 45,15 S 51,23 55,15" Stroke="#DEFDF8" StrokeThickness="1.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-</Grid>
- <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-</Grid>
-<ControlTemplate.Triggers>
- <EventTrigger RoutedEvent="FrameworkElement.Loaded"><BeginStoryboard><Storyboard>
-  <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleX" From="0.96" To="1" Duration="0:0:2.4" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
-  <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleY" From="0.96" To="1" Duration="0:0:2.4" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
-  <DoubleAnimation Storyboard.TargetName="HaloTurn" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:12" RepeatBehavior="Forever"/>
-  <DoubleAnimation Storyboard.TargetName="VoiceWave" Storyboard.TargetProperty="ScaleY" From="0.35" To="0.65" Duration="0:0:1.8" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
- </Storyboard></BeginStoryboard></EventTrigger>
- <Trigger Property="Tag" Value="Active">
-  <Trigger.EnterActions><BeginStoryboard x:Name="ActiveWave"><Storyboard><DoubleAnimation Storyboard.TargetName="VoiceWave" Storyboard.TargetProperty="ScaleY" From="0.5" To="1.15" Duration="0:0:0.55" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation></Storyboard></BeginStoryboard></Trigger.EnterActions>
-  <Trigger.ExitActions><RemoveStoryboard BeginStoryboardName="ActiveWave"/></Trigger.ExitActions>
- </Trigger>
- <Trigger Property="IsMouseOver" Value="True"><Setter Property="Opacity" Value="0.9"/></Trigger>
-</ControlTemplate.Triggers>
-</ControlTemplate>
-'@)
+$orb.Width=108;$orb.Height=108;$orb.Margin='16,16,16,8';$orb.Content='';$orb.Foreground='#EBF8FF';$orb.FontSize=14
+$orb.Template=[Windows.Markup.XamlReader]::Parse([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Cove-Orb.xaml')))
 $glow=New-Object Windows.Media.Effects.DropShadowEffect
-$glow.Color=[Windows.Media.ColorConverter]::ConvertFromString('#64B6DA');$glow.ShadowDepth=0;$glow.BlurRadius=22;$glow.Opacity=0.32;$orb.Effect=$glow
+$glow.Color=[Windows.Media.ColorConverter]::ConvertFromString('#64B6DA');$glow.ShadowDepth=0;$glow.BlurRadius=24;$glow.Opacity=0.28;$orb.Effect=$glow
 $status=New-Object Windows.Controls.TextBlock
-$status.Foreground='#CBDCEB';$status.TextAlignment='Center';$status.TextWrapping='Wrap';$status.Padding='8,5';$status.FontSize=10
+$status.Foreground='#D1E4E9';$status.TextAlignment='Center';$status.TextWrapping='Wrap';$status.Padding='8,5';$status.FontSize=10
 $statusPill=New-Object Windows.Controls.Border
-$statusPill.Background='#E6101722';$statusPill.CornerRadius='14';$statusPill.Margin='8,0,8,0';$statusPill.Padding='5,2';$statusPill.Child=$status
+$statusPill.Background='#E0121D2A';$statusPill.BorderBrush='#344755';$statusPill.BorderThickness='1';$statusPill.CornerRadius='16';$statusPill.Margin='12,0,12,0';$statusPill.Padding='5,3';$statusPill.Child=$status
 $openChat=New-Object Windows.Controls.Button
-$openChat.Content='Abrir conversa';$openChat.Background='Transparent';$openChat.BorderThickness='0';$openChat.Foreground='#A6B8CD';$openChat.Margin='22,4,22,0';$openChat.Padding='10,5';$openChat.FontSize=11
+$openChat.Content='Conversar';$openChat.Background='Transparent';$openChat.BorderThickness='0';$openChat.Foreground='#A6B8CD';$openChat.Margin='22,4,22,0';$openChat.Padding='10,5';$openChat.FontSize=11
 $panel.Children.Add($orb)|Out-Null;$panel.Children.Add($statusPill)|Out-Null;$panel.Children.Add($openChat)|Out-Null;$window.Content=$panel
 $status.Add_MouseLeftButtonDown({$window.DragMove()})
 $orb.ToolTip='Clique para falar. Arraste pelo texto. Botao direito: pausar ou sair.'
 $chat=[Windows.Markup.XamlReader]::Parse(@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Conversa com Cove" Width="500" Height="620" WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent" Foreground="#E6EEF8" FontFamily="Segoe UI">
-<Border CornerRadius="28" Background="#10151F" BorderBrush="#293241" BorderThickness="1" Padding="28"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-<Grid x:Name="DragHeader" Background="Transparent" Margin="0,0,0,20"><StackPanel><TextBlock Text="cove" FontSize="28" FontWeight="Light"/><TextBlock Text="Um instante. Uma conversa." FontSize="12" Foreground="#91A6BE" Margin="0,4,0,0"/></StackPanel><StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"><Button x:Name="Minimize" Content="&#x2212;" Width="32" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip="Minimizar"/><Button x:Name="CloseChat" Content="&#x00D7;" Width="32" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip="Fechar conversa"/></StackPanel></Grid>
-<TextBox x:Name="Transcript" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" BorderThickness="0" FontSize="14" Padding="16" Background="#151D29"/>
-<DockPanel Grid.Row="2" Margin="0,16,0,0"><Button x:Name="Send" Content="Enviar" DockPanel.Dock="Right" Background="#235D74" BorderBrush="#397D91" Padding="16,10"/><TextBox x:Name="Prompt" Margin="0,0,8,0" ToolTip="Escreva uma mensagem" MinHeight="44" VerticalContentAlignment="Center"/></DockPanel>
-<StackPanel Grid.Row="3" Margin="0,14,0,0"><WrapPanel><Button x:Name="Configure" Content="Ajustes" Padding="11,7" Background="Transparent"/><Button x:Name="Mute" Content="Pausar microfone" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/><Button x:Name="Clear" Content="Limpar" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/><Button x:Name="Apps" Content="Apps" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/></WrapPanel><TextBlock x:Name="Heard" Text="Diga Cove e espere ficar verde, ou clique na bolinha." TextWrapping="Wrap" Foreground="#91A6BE" FontSize="11" Margin="1,13,0,0"/></StackPanel>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Conversa com Cove" Width="560" Height="700" WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent" Foreground="#E6EEF8" FontFamily="Segoe UI">
+<Border CornerRadius="28" BorderBrush="#344453" BorderThickness="1" Padding="28"><Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#172635"/><GradientStop Color="#101722" Offset="0.5"/><GradientStop Color="#1D1B32" Offset="1"/></LinearGradientBrush></Border.Background><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+<Grid x:Name="DragHeader" Background="Transparent" Margin="0,0,0,20"><StackPanel><TextBlock x:Name="AssistantTitle" Text="Cove" FontSize="30" FontWeight="Light" Foreground="#C9F3E8"/><TextBlock Text="Sua voz. Seu espaco." FontSize="12" Foreground="#91A6BE" Margin="0,4,0,0"/></StackPanel><StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"><Button x:Name="Minimize" Content="&#x2212;" Width="32" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip="Minimizar"/><Button x:Name="CloseChat" Content="&#x00D7;" Width="32" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip="Fechar conversa"/></StackPanel></Grid>
+<TextBox x:Name="Transcript" Visibility="Collapsed" IsReadOnly="True"/>
+<Border Grid.Row="1" CornerRadius="20" Background="#80101925" BorderBrush="#273947" BorderThickness="1" Padding="12,16,12,0"><ScrollViewer x:Name="MessageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="MessageList"/></ScrollViewer></Border>
+<DockPanel Grid.Row="2" Margin="0,16,0,0"><Button x:Name="Send" Content="Enviar" DockPanel.Dock="Right" Background="#305D65" BorderBrush="#53878A" Padding="16,10"/><TextBox x:Name="Prompt" Margin="0,0,8,0" ToolTip="Escreva uma mensagem" MinHeight="44" VerticalContentAlignment="Center"/></DockPanel>
+<StackPanel Grid.Row="3" Margin="0,14,0,0"><WrapPanel><Button x:Name="Configure" Content="Ajustes" Padding="11,7" Background="Transparent"/><Button x:Name="Mute" Content="Pausar microfone" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/><Button x:Name="Clear" Content="Limpar" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/><Button x:Name="DiscordSettings" Content="Discord e mouse" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/><Button x:Name="Apps" Content="Apps e jogos" Margin="8,0,0,0" Padding="11,7" Background="Transparent"/></WrapPanel><TextBlock x:Name="Heard" Text="Diga Cove e espere ficar verde, ou clique na bolinha." TextWrapping="Wrap" Foreground="#91A6BE" FontSize="11" Margin="1,13,0,0"/></StackPanel>
 </Grid></Border></Window>
 '@)
 $chat.Resources.MergedDictionaries.Add($theme)
+$chat.FindName('AssistantTitle').Text=$script:assistantName
 $chat.Topmost=$false
 $chat.FindName('DragHeader').Add_MouseLeftButtonDown({param($sender,$eventArgs) if($eventArgs.OriginalSource -is [Windows.Controls.TextBlock] -or $eventArgs.OriginalSource -eq $sender){$chat.DragMove()}})
 $chat.FindName('CloseChat').Add_Click({$chat.Hide()})
 $chat.FindName('Minimize').Add_Click({$chat.WindowState='Minimized'})
 $transcript=$chat.FindName('Transcript');$promptBox=$chat.FindName('Prompt')
+$transcript.Add_TextChanged({Update-CoveConversation})
 $sendButton=$chat.FindName('Send');$muteButton=$chat.FindName('Mute')
 $heardLabel=$chat.FindName('Heard')
+$heardLabel.Text='Diga '+$script:assistantName+' e espere ficar verde, ou clique na bolinha.'
 $chat.Add_Closing({param($sender,$eventArgs) if(-not $script:quitting){$eventArgs.Cancel=$true;$chat.Hide()}})
 function Add-Message([string]$who,[string]$text){$transcript.AppendText($who+': '+$text+"`r`n`r`n");$transcript.ScrollToEnd()}
-function Update-Capture {if($script:listener){$script:listener.Paused=$script:muted -or $null -ne $script:loginTask -or $script:state -in @('Thinking','Speaking','Transcribing') -or [datetime]::Now -lt $script:cooldown;$script:listener.ListeningMode=$script:state -eq 'Listening'}}
+function Update-Capture {if($script:listener){$script:listener.Paused=$script:muted -or $null -ne $script:loginTask -or $null -ne $script:discordTask -or $null -ne $script:task -or ($script:mouseTestProcess -and -not $script:mouseTestProcess.HasExited) -or $script:state -in @('Thinking','Speaking','Transcribing') -or [datetime]::Now -lt $script:cooldown;$script:listener.ListeningMode=$script:state -eq 'Listening'}}
 function Restart-Listener {
  $transcriber.Stop();$script:transcribeTask=$null
  if($script:listener){$script:listener.Dispose();$script:listener=$null}
  $script:lastError='';$script:lastHeard='';$script:state='Idle'
- if(-not $SmokeTest -and $modelReady -and (Test-Path -LiteralPath (Join-Path $assets 'native\libvosk.dll'))){$script:listener=New-Object CoveApp.Listener((Join-Path $assets 'native'),(Join-Path $assets 'vosk-model-small-pt-0.3'),$script:micId);$script:listener.UseNeural=$transcriber.Installed;Update-Capture}
+ if(-not $SmokeTest -and $modelReady -and (Test-Path -LiteralPath (Join-Path $assets 'native\libvosk.dll'))){$script:listener=New-Object CoveApp.Listener((Join-Path $assets 'native'),(Join-Path $assets 'vosk-model-small-pt-0.3'),$script:micId,$script:assistantName);$script:listener.UseNeural=$transcriber.Installed;Update-Capture}
 }
 function Set-ConnectionMode([string]$value){[IO.File]::WriteAllText($modeFile,$value);$script:mode=$value;$script:history=@()}
 function Start-ChatGPTConnection([string]$action){
@@ -140,20 +135,78 @@ function Start-ChatGPTConnection([string]$action){
  $sendButton.IsEnabled=$false;Update-Capture
 }
 function Say([string]$text){
+ $text=($text -replace 'https?://\S+','').Trim()
  if($script:voiceAvailable){try{$script:state='Speaking';Update-Capture;$script:speechTask=$voiceEngine.Speak($text,$script:voiceId);return}catch{Add-Message 'Cove' 'A voz selecionada nao esta disponivel. Escolha outra em Ajustes.'}}
  $script:state='Idle'
+}
+function Update-StreamSpeech([switch]$Finish){
+ if(-not $script:streamActive -or -not $script:account){return}
+ $delta=''
+ while($script:account.TextDeltas.TryDequeue([ref]$delta)){
+  $script:streamHadText=$true
+  if(-not $script:suppressSpeech){$script:streamBuffer+=$delta}
+ }
+ if($script:suppressSpeech){$script:streamBuffer='';$script:speechQueue.Clear();return}
+ while($script:streamBuffer -match '(?s)^(.{12,}?[.!?](?=\s|$))(.*)$'){
+  $script:speechQueue.Enqueue($Matches[1].Trim());$script:streamBuffer=$Matches[2].TrimStart()
+ }
+ while($script:streamBuffer.Length -gt 110){
+  $cut=$script:streamBuffer.LastIndexOf(' ',100)
+  if($cut -lt 20){break}
+  $script:speechQueue.Enqueue($script:streamBuffer.Substring(0,$cut).Trim())
+  $script:streamBuffer=$script:streamBuffer.Substring($cut).TrimStart()
+ }
+ if($Finish -and $script:streamBuffer.Trim()){$script:speechQueue.Enqueue($script:streamBuffer.Trim());$script:streamBuffer=''}
 }
 function Start-CoveTranscription([byte[]]$pcm){
  if($script:transcribeTask -or $script:task -or $script:loginTask){return}
  $script:state='Transcribing';$script:listenUntil=[datetime]::MinValue;Update-Capture
  $heardLabel.Text='Estou entendendo sua frase...';$sendButton.IsEnabled=$false
- $names=(@(Get-CoveApplications|ForEach-Object{$_.Name})+@('Cove')) -join ', '
+ # A small relevant vocabulary avoids biasing every sentence toward 146 app names.
+ $names=(@($script:vocabulary)+@($script:assistantName,'Cove','Discord','Spotify','Steam','Chrome','WhatsApp','Bloco de notas','CapCut','Roblox','Marvel Rivals','Visual Studio Code')) -join ', '
+ if(Test-Path -LiteralPath $script:coveDiscordFile){try{$callHint=Get-Content -LiteralPath $script:coveDiscordFile -Raw|ConvertFrom-Json;$names=$script:vocabulary+', '+$callHint.Name+', '+$names}catch{}}
+ if($script:discordDialog -and $script:discordDialog.Stage -eq 'channel'){$names=$script:vocabulary+', Geral, Lounge, Sala, cancelar'}
+ $messageHint=Get-CoveMessageContext
+ if($script:messageDialog -and $script:messageDialog.Recipient){$names=$script:messageDialog.Recipient+', Discord, WhatsApp, cancelar, '+$names}
+ elseif($messageHint){$names=$messageHint.Recipient+', '+$messageHint.Platform+', '+$names}
+ if($script:pendingMessageText){$names='Sim, nao, pode mandar, pode enviar, cancelar'}
  if($script:pendingAppName){$names='Sim, nao, pode abrir, cancelar'}
  $script:transcribeTask=$transcriber.Transcribe($pcm,$names)
 }
-function Show-Settings {
+function Show-Settings([switch]$Discord){
  $dialog=[Windows.Markup.XamlReader]::Parse(@'
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Ajustes do Cove" Width="460" SizeToContent="Height" MaxHeight="760" WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent" Foreground="#E6EEF8" FontFamily="Segoe UI" ResizeMode="NoResize"><Border CornerRadius="28" Background="#10151F" BorderBrush="#293241" BorderThickness="1" Padding="24"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel><DockPanel x:Name="SettingsHeader" Background="Transparent" Margin="0,0,0,20"><Button x:Name="CloseSettings" Content="&#x00D7;" DockPanel.Dock="Right" Width="30" Height="30" Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Right"/><TextBlock Text="Ajustes" FontSize="22" FontWeight="SemiBold"/></DockPanel>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Ajustes do Cove" Width="460" SizeToContent="Height" MaxHeight="760" WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent" Foreground="#E6EEF8" FontFamily="Segoe UI" ResizeMode="NoResize"><Border CornerRadius="28" Background="#FF101B29" BorderBrush="#344453" BorderThickness="1" Padding="24"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel><DockPanel x:Name="SettingsHeader" Background="Transparent" Margin="0,0,0,20"><Button x:Name="CloseSettings" Content="&#x00D7;" DockPanel.Dock="Right" Width="30" Height="30" Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Right"/><TextBlock Text="Ajustes" FontSize="22" FontWeight="SemiBold"/></DockPanel>
+<TextBlock x:Name="BuildInfo" Foreground="#91A6BE" FontSize="10" Margin="0,0,0,12"/>
+<Expander x:Name="CallsExpander" Header="Calls do Discord e mouse" IsExpanded="True" Foreground="#D1E4E9" Margin="0,16,0,18"><StackPanel Margin="0,10,0,0">
+<TextBlock Text="Escolha como entrar. Mouse move o ponteiro ate os alvos nos dois monitores. Esc ou mover o mouse interrompe. Links salvos sao uma alternativa opcional. Servidores: entre no servidor NOME e na call CANAL. Privado: liga para NOME no Discord." TextWrapping="Wrap" Foreground="#91A6BE" FontSize="12"/>
+<ComboBox x:Name="DiscordMethod" Margin="0,10,0,10"/>
+<TextBlock x:Name="MouseMonitorInfo" TextWrapping="Wrap" Foreground="#91A6BE" FontSize="11" Margin="0,0,0,8"/>
+<Button x:Name="TestMouseMonitors" Content="Testar mouse nos monitores" Margin="0,0,0,6"/>
+<TextBlock x:Name="MouseTestStatus" Text="O teste move e clica em uma janela de teste em cada monitor. Esc interrompe." TextWrapping="Wrap" Foreground="#91A6BE" FontSize="11" Margin="0,0,0,12"/>
+<Expander Header="Links salvos (opcional)" Foreground="#91A6BE"><StackPanel>
+<ListBox x:Name="SavedCalls" DisplayMemberPath="Name" Height="85" Background="#161E2B" Foreground="#E7EDF5" BorderBrush="#303B4C"/>
+<TextBlock Text="Servidor" Foreground="#91A6BE" Margin="0,10,0,4"/><TextBox x:Name="CallServer" MaxLength="100"/>
+<TextBlock Text="Nome da call" Foreground="#91A6BE" Margin="0,8,0,4"/><TextBox x:Name="CallChannel" MaxLength="100"/>
+<TextBlock Text="Link do canal de voz" Foreground="#91A6BE" Margin="0,8,0,4"/><TextBox x:Name="CallLink" ToolTip="Botao direito no canal do Discord e Copiar link"/>
+<Button x:Name="SaveCallLink" Content="Salvar canal" Margin="0,10,0,0" Background="#305D65" BorderBrush="#53878A"/>
+<WrapPanel Margin="0,8,0,0"><Button x:Name="TestCallLink" Content="Entrar na selecionada" Padding="10,7"/><Button x:Name="RemoveCallLink" Content="Remover" Margin="8,0,0,0" Padding="10,7"/></WrapPanel>
+<TextBlock x:Name="CallStatus" TextWrapping="Wrap" Foreground="#91A6BE" FontSize="11" Margin="0,8,0,0"/>
+</StackPanel></Expander>
+</StackPanel></Expander>
+<TextBlock Text="Personalizar a Cove" FontSize="17" Margin="0,0,0,10"/>
+<TextBlock Text="Nome exibido da assistente" Margin="0,0,0,5"/><TextBox x:Name="AssistantName" MaxLength="24"/>
+<WrapPanel Margin="0,8,0,0"><Button x:Name="SaveAssistantName" Content="Salvar nome"/><Button x:Name="ResetAssistantName" Content="Restaurar Cove" Background="Transparent" Margin="8,0,0,0"/></WrapPanel>
+<TextBlock x:Name="NameStatus" Text="Muda o nome na conversa, nas respostas e na ativacao por voz. Use o novo nome para chamar por voz." FontSize="11" Foreground="#91A6BE" TextWrapping="Wrap" Margin="0,6,0,14"/>
+<Button x:Name="SavedDrafts" Content="Ver rascunhos preservados" Background="Transparent" Margin="0,0,0,12"/>
+<Expander Header="Horario, temperatura e noticias" Foreground="#D1E4E9" Margin="0,0,0,14"><StackPanel Margin="0,8,0,0">
+<TextBlock Text="Horario do Windows. Temperatura: Open-Meteo. Noticias: BBC News Brasil. Pesquisas abrem no Chrome." Foreground="#91A6BE" TextWrapping="Wrap" FontSize="12"/>
+<TextBlock Text="Cidade e estado para temperatura" Margin="0,8,0,4"/><TextBox x:Name="WeatherCity" MaxLength="120" ToolTip="Exemplo: Curitiba, Parana"/>
+<Button x:Name="SaveWeatherCity" Content="Salvar cidade" Margin="0,8,0,0"/><TextBlock x:Name="WeatherCityStatus" Foreground="#91A6BE" TextWrapping="Wrap" FontSize="11" Margin="0,6,0,0"/>
+</StackPanel></Expander>
+<DockPanel><Border x:Name="AccentPreview" DockPanel.Dock="Right" Width="34" Height="34" CornerRadius="17" Margin="10,0,0,0"/><ComboBox x:Name="AccentList" DisplayMemberPath="Name"/></DockPanel>
+<DockPanel Margin="0,8,0,0"><Button x:Name="ChooseAccent" Content="Escolher cor" DockPanel.Dock="Right" Margin="8,0,0,0"/><TextBox x:Name="AccentHex" MaxLength="7" ToolTip="Cor #RRGGBB"/></DockPanel>
+<Button x:Name="ApplyAccent" Content="Aplicar cor" Background="#305D65" BorderBrush="#53878A" Margin="0,8,0,0"/>
+<TextBlock x:Name="AccentStatus" Foreground="#91A6BE" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
 <TextBlock Text="Sua conta ChatGPT" FontSize="17"/>
 <TextBlock x:Name="AccountStatus" Foreground="#91A6BE" Margin="0,8,0,12" TextWrapping="Wrap"/>
 <Button x:Name="ConnectChatGPT" Content="Continuar com ChatGPT" Background="#F2F5F8" Foreground="#15202B" BorderBrush="#F2F5F8"/>
@@ -170,14 +223,27 @@ function Show-Settings {
 <ComboBox x:Name="MicList" DisplayMemberPath="Name"/>
 <ProgressBar x:Name="MicMeter" Minimum="0" Maximum="100" Height="6" Margin="0,12,0,6" Foreground="#67D9BE" Background="#203247" BorderThickness="0"/>
 <TextBlock x:Name="MicHint" Text="Fale e observe o nivel do microfone." Foreground="#91A6BE" FontSize="11" TextWrapping="Wrap"/>
-<Button x:Name="ApplyAudio" Content="Aplicar voz e microfone" Background="#235D74" BorderBrush="#397D91" Margin="0,12,0,0"/>
-<TextBlock Text="Se o nivel nao mexer, escolha outro microfone e aplique. Depois diga Cove, espere ficar verde e fale." Foreground="#91A6BE" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
-<Expander Header="Usar chave da API (alternativa)" Margin="0,24,0,0" Foreground="#91A6BE"><StackPanel Margin="0,14,0,0"><TextBlock Text="A API tem faturamento separado. So sera usada se voce escolher Salvar e usar API." TextWrapping="Wrap" FontSize="12"/><PasswordBox x:Name="Key" Margin="0,14,0,12"/><Button x:Name="Save" Content="Salvar e usar API" Background="#235D74" BorderBrush="#397D91"/><Button x:Name="Forget" Content="Remover chave salva" Background="Transparent" BorderThickness="0" Margin="0,6,0,0"/></StackPanel></Expander>
+<TextBlock Text="Palavras e nomes que voce usa" Foreground="#D1E4E9" FontSize="13" Margin="0,14,0,6"/>
+<TextBox x:Name="Vocabulary" MaxLength="240" ToolTip="Nomes de pessoas, jogos ou canais, separados por virgula"/>
+<TextBlock Text="Opcional: nomes de amigos, jogos e canais, separados por virgula. Isso ajuda a reconhecer palavras menos comuns." Foreground="#91A6BE" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+<Button x:Name="ApplyAudio" Content="Aplicar voz e microfone" Background="#305D65" BorderBrush="#53878A" Margin="0,12,0,0"/>
+<TextBlock Text="Se o nivel nao mexer, escolha outro microfone e aplique. Depois diga o nome configurado, espere ficar verde e fale." Foreground="#91A6BE" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
+<Expander Header="Usar chave da API (alternativa)" Margin="0,24,0,0" Foreground="#91A6BE"><StackPanel Margin="0,14,0,0"><TextBlock Text="A API tem faturamento separado. So sera usada se voce escolher Salvar e usar API." TextWrapping="Wrap" FontSize="12"/><PasswordBox x:Name="Key" Margin="0,14,0,12"/><Button x:Name="Save" Content="Salvar e usar API" Background="#305D65" BorderBrush="#53878A"/><Button x:Name="Forget" Content="Remover chave salva" Background="Transparent" BorderThickness="0" Margin="0,6,0,0"/></StackPanel></Expander>
 </StackPanel></ScrollViewer></Border></Window>
 '@)
  $dialog.Resources.MergedDictionaries.Add($theme)
  $dialog.Owner=$chat
+ $dialog.FindName('BuildInfo').Text='Mouse em 2 monitores | versao '+$script:buildId
+ $dialog.FindName('AssistantName').Text=$script:assistantName
+ $dialog.FindName('SaveAssistantName').Add_Click({try{$saved=Set-CoveAssistantName $dialog.FindName('AssistantName').Text;$chat.FindName('AssistantTitle').Text=$saved;if($heardLabel){$heardLabel.Text='Diga '+$saved+' para conversar.'};Update-CoveConversation;$dialog.FindName('NameStatus').Text='Nome salvo. Use o novo nome para chamar por voz.'}catch{$dialog.FindName('NameStatus').Text=$_.Exception.Message}})
+ $dialog.FindName('ResetAssistantName').Add_Click({try{$saved=Set-CoveAssistantName 'Cove';$dialog.FindName('AssistantName').Text=$saved;$chat.FindName('AssistantTitle').Text=$saved;if($heardLabel){$heardLabel.Text='Diga '+$saved+' para conversar.'};Update-CoveConversation;$dialog.FindName('NameStatus').Text='Nome Cove restaurado.'}catch{$dialog.FindName('NameStatus').Text=$_.Exception.Message}})
+ $dialog.FindName('SavedDrafts').Add_Click({Show-CoveSavedDrafts})
+ $dialog.FindName('WeatherCity').Text=Get-CoveWeatherCity
+ $dialog.FindName('SaveWeatherCity').Add_Click({try{Set-CoveWeatherCity $dialog.FindName('WeatherCity').Text;$dialog.FindName('WeatherCityStatus').Text='Cidade salva.'}catch{$dialog.FindName('WeatherCityStatus').Text=$_.Exception.Message}})
+ . (Join-Path $PSScriptRoot 'CoveSettingsExtras.ps1')
+ if($Discord){$dialog.FindName('CallsExpander').IsExpanded=$true}
  $voiceList=$dialog.FindName('VoiceList');$micList=$dialog.FindName('MicList')
+ $vocabularyBox=$dialog.FindName('Vocabulary');$vocabularyBox.Text=$script:vocabulary
  $script:asrStatus=$dialog.FindName('RecognitionStatus')
  if($transcriber.Installed){$script:asrStatus.Text='Escuta aprimorada ativada. Fale no seu ritmo.';$dialog.FindName('ImproveListening').Visibility='Collapsed'}else{$script:asrStatus.Text='Escuta leve em uso. Prepare a escuta aprimorada para entender melhor frases naturais.'}
  $dialog.FindName('ImproveListening').Add_Click({
@@ -217,7 +283,8 @@ function Show-Settings {
    if($script:task -or $script:loginTask -or $script:transcribeTask){$script:micHint.Text='Espere a operacao atual terminar antes de aplicar.';return}
    if($voiceList.SelectedItem){$script:voiceId=$voiceList.SelectedItem.Id}
    if($micList.SelectedItem){$script:micId=[int]$micList.SelectedItem.Id}
-   @{Voice=$script:voiceId;Microphone=$script:micId;PresetVersion=1}|ConvertTo-Json|Set-Content -LiteralPath $audioFile -Encoding UTF8
+   $script:vocabulary=$vocabularyBox.Text.Trim()
+   @{Voice=$script:voiceId;Microphone=$script:micId;PresetVersion=1;Vocabulary=$script:vocabulary}|ConvertTo-Json|Set-Content -LiteralPath $audioFile -Encoding UTF8
    $voiceEngine.Stop();$script:speechTask=$null;Restart-Listener
    $script:muted=$false;$muteButton.Content='Pausar microfone';Update-Capture
    $script:micHint.Text='Aplicado. Fale para conferir o nivel.'
@@ -264,8 +331,17 @@ function Show-Settings {
  try{$dialog.ShowDialog()|Out-Null}finally{$script:micMeter=$null;$script:micHint=$null;$script:voiceHint=$null;$script:asrStatus=$null}
 }
 function Ask-Cove([string]$question,[switch]$FromVoice,[double]$Confidence=1){
- $question=$question.Trim();if(-not $question -or $script:task -or $script:loginTask -or $script:transcribeTask){return}
+ $question=$question.Trim();if(-not $question -or $script:task -or $script:loginTask -or $script:transcribeTask -or $script:discordTask -or ($script:mouseTestProcess -and -not $script:mouseTestProcess.HasExited)){return}
+ $script:speechQueue.Clear();$script:streamBuffer='';$script:streamActive=$false;$script:streamHadText=$false;$script:suppressSpeech=$false
+ $script:messagePlanPending=$false
+ if($script:account){$discard='';while($script:account.TextDeltas.TryDequeue([ref]$discard)){}}
  $displayQuestion=$question;$confirmed=$false
+ if($script:pendingMessageText -and [datetime]::Now -lt $script:pendingMessageUntil){
+  $reply=ConvertTo-CoveAppName $question
+  if($reply -in @('sim','isso','isso mesmo','pode','pode mandar','pode enviar','manda','envia','confirmo')){$question=$script:pendingMessageText;$confirmed=$true}
+  elseif($reply -in @('nao','cancela','cancelar','deixa pra la')){$script:pendingMessageText='';$script:listenAfterSpeech=$false;Add-Message 'Voce' $displayQuestion;Add-Message 'Cove' 'Envio cancelado.';Say 'Envio cancelado.';return}
+ }
+ $script:pendingMessageText=''
  if($script:pendingAppName -and [datetime]::Now -lt $script:pendingAppUntil){
   $reply=ConvertTo-CoveAppName $question
   if($reply -in @('sim','isso','isso mesmo','sim pode abrir','pode abrir','confirmo','confirma')){$question='abra '+$script:pendingAppName;$confirmed=$true}
@@ -275,15 +351,42 @@ function Ask-Cove([string]$question,[switch]$FromVoice,[double]$Confidence=1){
   }
  }
  $script:pendingAppName='';$script:listenAfterSpeech=$false;$script:resumeListeningAt=[datetime]::MinValue
- $localAction=Invoke-CoveAppRequest $question -DryRun:$SmokeTest -RequireConfirmation:($FromVoice -and $Confidence -lt 0.72 -and -not $confirmed)
+ $messageStatus=Get-CoveMessageStatusRequest $question
+ if($messageStatus.Handled){Add-Message 'Voce' $displayQuestion;Add-Message 'Cove' $messageStatus.Message;Add-CoveHistoryEntry 'user' $displayQuestion;Add-CoveHistoryEntry 'assistant' $messageStatus.Message;Say $messageStatus.Message;Update-Capture;return}
+ $messagePreview=Invoke-CoveMessageRequest $question -DryRun
+ $unparsedMessage=(-not $messagePreview.Handled) -and (Test-CoveUnparsedMessageIntent $question)
+ $discordPreview=if($messagePreview.Handled){$messagePreview}elseif($unparsedMessage){[pscustomobject]@{Handled=$false}}else{Invoke-CoveDiscordRequest $question -DryRun}
+ $controlPreview=if($discordPreview.Handled){$discordPreview}elseif($unparsedMessage){[pscustomobject]@{Handled=$false}}else{Invoke-CoveComputerRequest $question -DryRun}
+ Write-CoveActionTrace $(if($messagePreview.Handled){'local-message'}elseif($unparsedMessage){'planned-message'}elseif($discordPreview.Handled){'discord'}else{'other'}) 'recognized'
+ if($controlPreview.Handled -and $FromVoice -and $Confidence -lt 0.72 -and -not $confirmed){
+  if($messagePreview.Handled){Add-Message 'Voce' $displayQuestion;Request-CoveMessageConfirmation $question;return}
+  if($discordPreview.Handled){$script:listenAfterSpeech=$true}
+  if($messagePreview.Handled){Set-CoveMessageState $messagePreview 'failed' 'Nao entendi o pedido com clareza. Nada foi enviado.'}
+  Add-Message 'Voce' $displayQuestion;Say 'Nao entendi esse comando com clareza. Repita ou digite o pedido.';Update-Capture;return
+ }
+ if($discordPreview.Handled){
+  $script:discordCancel=New-Object Threading.CancellationTokenSource
+  try{$localAction=if($messagePreview.Handled){Invoke-CoveMessageRequest $question -DryRun:$SmokeTest}else{Invoke-CoveDiscordRequest $question -DryRun:$SmokeTest}}catch{if($messagePreview.Handled){Set-CoveMessageState $messagePreview 'failed' $_.Exception.GetBaseException().Message};$script:discordCancel.Dispose();$script:discordCancel=$null;Add-Message 'Cove' $_.Exception.GetBaseException().Message;return}
+  if(-not $localAction.Task){$script:discordCancel.Dispose();$script:discordCancel=$null}
+ }else{$localAction=if($unparsedMessage){[pscustomobject]@{Handled=$false}}elseif($controlPreview.Handled){Invoke-CoveComputerRequest $question -DryRun:$SmokeTest}else{Invoke-CoveFileRequest $question -DryRun:$SmokeTest}}
+ if(-not $localAction.Handled -and -not $unparsedMessage){$localAction=Invoke-CoveOnlineRequest $question -DryRun:$SmokeTest}
+ if(-not $localAction.Handled -and -not $unparsedMessage){$localAction=Invoke-CoveAppRequest $question -DryRun:$SmokeTest -RequireConfirmation:($FromVoice -and $Confidence -lt 0.72 -and -not $confirmed)}
  if($localAction.Handled){
   $voiceEngine.Stop();$script:speechTask=$null;$script:listenUntil=[datetime]::MinValue;$script:state='Idle'
   if($localAction.NeedsConfirmation){$script:pendingAppName=$localAction.AppName;$script:pendingAppUntil=[datetime]::Now.AddSeconds(90);$script:listenAfterSpeech=$true}
+  if($localAction.AwaitReply){$script:listenAfterSpeech=$true}
+  if($localAction.NeedsCallLink){$script:pendingLinkTarget=[pscustomobject]@{Server=$localAction.Server;Channel=$localAction.Channel}}
   Add-Message 'Voce' $displayQuestion;Add-Message 'Cove' $localAction.Message
+  Add-CoveHistoryEntry 'user' $question
+  if(-not $localAction.Task){Add-CoveHistoryEntry 'assistant' $localAction.Message}
+  if($messagePreview.Handled){Set-CoveMessageState $localAction $(if($localAction.Task){'running'}else{'awaiting-data'}) $localAction.Message}
+  if($localAction.Task){$script:localTaskIsMessage=$messagePreview.Handled;$script:discordTask=$localAction.Task;$script:state='Thinking';$sendButton.IsEnabled=$false;Update-Capture;return}
   Say $localAction.Message
   if($script:listenAfterSpeech -and $script:state -ne 'Speaking'){$script:resumeListeningAt=[datetime]::Now.AddMilliseconds(400);$script:listenAfterSpeech=$false}
   Update-Capture;return
  }
+ $messageIntent=Test-CoveUnparsedMessageIntent $question
+ if($messageIntent -and $FromVoice -and $Confidence -lt 0.72 -and -not $confirmed){Add-Message 'Voce' $displayQuestion;Request-CoveMessageConfirmation $question;return}
  if($script:mode -eq 'chatgpt' -and (-not $script:account -or -not $script:account.Connected)){$script:state='Idle';$chat.Show();Add-Message 'Cove' 'Entre em Ajustes > Continuar com ChatGPT para conectar sua conta.';Show-Settings;return}
  if($script:mode -eq 'api' -and -not $script:key){$script:state='Idle';$chat.Show();Add-Message 'Cove' 'Cadastre uma chave em Ajustes ou escolha Continuar com ChatGPT.';Show-Settings;return}
  try{
@@ -291,14 +394,26 @@ function Ask-Cove([string]$question,[switch]$FromVoice,[double]$Confidence=1){
   $script:state='Thinking';$script:listenUntil=[datetime]::MinValue;Update-Capture
   Add-Message 'Voce' $question;$script:pendingQuestion=$question
   $messages=@($script:history)+@(@{role='user';content=$question})
-  $body=@{model='gpt-4.1-mini';instructions='Voce e Cove, um assistente de voz amigavel. Fale portugues brasileiro natural, com respostas curtas, sem markdown. Seu nome se pronuncia Couve. Voce e a conversa de um aplicativo independente. O Cove pode abrir apps cadastrados por comandos locais, como abre o Discord. Esses comandos sao tratados pelo aplicativo, fora desta conversa. Se um pedido de abertura chegar aqui, oriente a usar o botao Apps ou dizer abre o Discord; nao afirme que o Cove e incapaz de abrir apps. Voce nao executa acoes pelo texto da resposta nem ve arquivos ou tela. Nao finja executar acoes. Quando nao souber, diga com clareza.';input=$messages;max_output_tokens=400;store=$false}|ConvertTo-Json -Depth 12 -Compress
+  $body=@{model='gpt-4.1-mini';instructions='Voce e NOME_CONFIGURADO_COVE, um assistente de voz amigavel. Converse em portugues brasileiro natural, sem markdown. Seja direto em comandos simples e desenvolva a explicacao quando a pessoa pedir. Use o contexto recente e os resultados locais registrados na conversa. Nao obrigue a pessoa a repetir contato, aplicativo ou mensagem que ja informou. Nao repita avisos genericos de falta de confirmacao; descreva o resultado local conhecido, sem inventar sucesso. Use o nome configurado ao se apresentar. Voce e a conversa de um aplicativo independente. O Cove encontra apps e jogos no menu Iniciar, atalhos, bibliotecas instaladas Steam e Epic e executaveis cadastrados, e pode abri-los com abre NOME. Tambem envia mensagens privadas no WhatsApp Desktop, WhatsApp Web no Chrome e Discord por pedidos locais: mande mensagem para CONTATO no APLICATIVO dizendo TEXTO. Pode receber o texto, contato e aplicativo numa frase; se faltar algo, pergunta apenas esse dado. Nunca afirme envio ou entrega por escrever uma resposta; o envio usa a interface local e informa o resultado. Para entrar em calls, aceita servidor e canal numa frase e procura nas listas do Discord. Pergunta apenas nomes ausentes. Tambem inicia chamadas privadas por voz com liga para NOME no Discord ou entra na call com NOME. A pessoa precisa atender; nao prometa conexao antes de confirmar. A call padrao pode ser salva com configurar call NOME com link LINK-DO-CANAL. Essa automacao usa a interface do Discord Desktop e informa quando nao consegue confirmar a conexao. Esses comandos sao tratados pelo aplicativo, fora desta conversa. Horario e data usam o relogio do Windows; noticias recentes usam BBC News Brasil; temperatura usa Open-Meteo, com cidade configuravel nos Ajustes. Pedidos de pesquisar abrem uma busca no Chrome. Nao invente dados atuais quando nao forem retornados por esses comandos locais. Aceite pedidos em linguagem natural. Nao exija uma frase exata, nao apresente roteiro de comandos nem mande a pessoa repetir uma sequencia fixa. Se faltar um destino, pergunte apenas essa informacao. Os comandos locais de apps e calls sao reconhecidos pelo aplicativo; nao afirme que executou uma acao so por escrever a resposta. O aplicativo tambem aceita comandos locais: liste os discos; listar pasta Documentos; abrir pasta Downloads; leia arquivo seguido de um caminho local completo. Pode listar e abrir pastas em qualquer disco permitido pelo Windows e ler arquivos txt, md, csv, json e log. O aplicativo tambem controla mouse, teclado e janelas e pode criar, editar, mover e excluir arquivos por comandos locais explicitos. Diga comandos do computador para conhecer a sintaxe. Primeiro use focar janela e o titulo do aplicativo antes de digitar, clicar ou enviar teclas. Edicoes de texto preservam uma copia e exclusoes de arquivos usam a Lixeira. O acesso usa as permissoes da conta Windows. O conteudo lido nesses comandos fica local e nao e enviado a esta conversa. Voce nao executa acoes pelo texto da resposta nem ve arquivos ou tela. Nao finja executar acoes. Quando nao souber, diga com clareza.'.Replace('NOME_CONFIGURADO_COVE',$script:assistantName);input=$messages;max_output_tokens=400;store=$false}|ConvertTo-Json -Depth 12 -Compress
   $script:cancel=New-Object Threading.CancellationTokenSource
-  if($script:mode -eq 'chatgpt'){$script:task=$script:account.Ask($body,$script:cancel.Token)}else{$script:task=[CoveApp.Brain]::Ask($script:key,$body,$script:cancel.Token)}
+  $script:messagePlanPending=$messageIntent
+  if($messageIntent){Set-CoveMessageState $null 'planning'}
+  if($messageIntent){$body=@{model='gpt-4.1-mini';instructions=(Get-CoveMessagePlannerInstructions);input=@(@{role='user';content=$question});max_output_tokens=700;store=$false}|ConvertTo-Json -Depth 8 -Compress}
+  if($script:mode -eq 'chatgpt'){$script:streamActive=-not $messageIntent;$script:task=$script:account.Ask($body,$script:cancel.Token)}else{$script:task=[CoveApp.Brain]::Ask($script:key,$body,$script:cancel.Token)}
   $sendButton.IsEnabled=$false
- }catch{$script:state='Idle';Add-Message 'Cove' 'Nao foi possivel iniciar a pergunta. Confira a configuracao.';Update-Capture}
+ }catch{if($messageIntent){Set-CoveMessageState $null 'failed' 'Nao foi possivel interpretar o pedido. Nada foi enviado.'};$script:state='Idle';Add-Message 'Cove' 'Nao foi possivel iniciar a pergunta. Confira a configuracao.';Update-Capture}
+}
+function Show-CoveDiscordSettings {
+ $chat.WindowState='Normal';$chat.Show();$chat.Activate()|Out-Null
+ Show-Settings -Discord
+}
+function Request-CoveReload([switch]$SelfRestart){
+ try{Save-CoveReloadState $PSScriptRoot $transcript.Text @($script:history)}catch{}
+ $script:selfRestart=[bool]$SelfRestart
+ $window.Close()
 }
 function Begin-Listening([switch]$FromWake) {
- if($script:task -or $script:transcribeTask){return}
+ if($script:task -or $script:transcribeTask -or $script:discordTask -or ($script:mouseTestProcess -and -not $script:mouseTestProcess.HasExited)){return}
  if(-not $script:listener -or -not $script:listener.Ready){$chat.Show();Add-Message 'Cove' 'A escuta ainda nao esta disponivel. Voce pode digitar sua pergunta aqui.';return}
  if($script:muted){return}
  $voiceEngine.Stop();$script:speechTask=$null
@@ -322,21 +437,24 @@ function Toggle-Microphone {
  Update-Capture
 }
 $openChat.Add_Click({$chat.WindowState='Normal';$chat.Show();$chat.Activate()|Out-Null})
-$orb.Add_Click({if($script:state -eq 'Speaking'){$voiceEngine.Stop();$script:speechTask=$null;$script:state='Idle';$script:cooldown=[datetime]::Now.AddMilliseconds(900)}elseif($script:state -eq 'Transcribing'){$transcriber.Stop();$script:transcribeTask=$null;$script:state='Idle';$sendButton.IsEnabled=$true;Begin-Listening}else{Begin-Listening}})
+$orb.Add_Click({if($script:state -eq 'Speaking'){$script:suppressSpeech=$true;$script:speechQueue.Clear();$script:streamBuffer='';$voiceEngine.Stop();$script:speechTask=$null;$script:state='Idle';$script:cooldown=[datetime]::Now.AddMilliseconds(450)}elseif($script:state -eq 'Transcribing'){$transcriber.Stop();$script:transcribeTask=$null;$script:state='Idle';$sendButton.IsEnabled=$true;Begin-Listening}else{Begin-Listening}})
 $sendButton.Add_Click({$q=$promptBox.Text;$promptBox.Clear();Ask-Cove $q})
 $promptBox.Add_KeyDown({param($sender,$eventArgs) if($eventArgs.Key -eq 'Return' -and $sendButton.IsEnabled){$q=$promptBox.Text;$promptBox.Clear();Ask-Cove $q;$eventArgs.Handled=$true}})
 $chat.FindName('Configure').Add_Click({Show-Settings})
 $chat.FindName('Apps').Add_Click({Show-CoveApplications})
+$chat.FindName('DiscordSettings').Add_Click({Show-CoveDiscordSettings})
 $muteButton.Add_Click({Toggle-Microphone})
 $chat.FindName('Clear').Add_Click({if(-not $script:task){$script:history=@();$transcript.Clear()}})
 $menu=New-Object Windows.Controls.ContextMenu
-foreach($label in @('Pausar / retomar microfone','Conversa','Sair')){$item=New-Object Windows.Controls.MenuItem;$item.Header=$label;$menu.Items.Add($item)|Out-Null}
-$menu.Items[0].Add_Click({Toggle-Microphone});$menu.Items[1].Add_Click({$chat.Show()});$menu.Items[2].Add_Click({$window.Close()});$orb.ContextMenu=$menu
+foreach($label in @('Pausar / retomar microfone','Conversa','Discord e mouse','Reiniciar / atualizar','Sair')){$item=New-Object Windows.Controls.MenuItem;$item.Header=$label;$menu.Items.Add($item)|Out-Null}
+$menu.Items[0].Add_Click({Toggle-Microphone});$menu.Items[1].Add_Click({$chat.Show()});$menu.Items[2].Add_Click({Show-CoveDiscordSettings});$menu.Items[3].Add_Click({Request-CoveReload -SelfRestart});$menu.Items[4].Add_Click({$window.Close()});$orb.ContextMenu=$menu
 $assets=Join-Path $PSScriptRoot 'assets'
 $modelReady=(Test-Path -LiteralPath (Join-Path $assets 'vosk-model-small-pt-0.3\final.mdl')) -or (Test-Path -LiteralPath (Join-Path $assets 'vosk-model-small-pt-0.3\am\final.mdl'))
 if(-not $SmokeTest -and (Test-Path -LiteralPath (Join-Path $assets 'native\libvosk.dll')) -and $modelReady){
  Restart-Listener
 }elseif(-not $SmokeTest){Add-Message 'Cove' 'Para ativar o microfone local, execute Preparar-Cove.cmd. Enquanto isso, voce pode digitar.'}
+if(-not $SmokeTest){$script:warmTasks=@($voiceEngine.WarmUp(),$transcriber.WarmUp())}
+if(-not $SmokeTest){$restored=Read-CoveReloadState $PSScriptRoot;if($restored){$transcript.Text=[string]$restored.Transcript;$script:history=@($restored.History|Select-Object -Last 16)}}
 Add-Message 'Cove' 'Oi! Diga meu nome ou escreva aqui. Estou por perto.'
 if($script:mode -eq 'chatgpt' -and (-not $script:account -or -not $script:account.Connected)){Add-Message 'Cove' 'Para conectar sua conta, abra Ajustes e escolha Continuar com ChatGPT.'}
 $script:pulse=0
@@ -346,6 +464,8 @@ $timer.Add_Tick({
  $script:pulse+=0.16
  try{
   if($instanceChannel){
+   if($instanceChannel.Reload.WaitOne(0)){Request-CoveReload;return}
+   if($instanceChannel.DiscordSettings.WaitOne(0)){Show-CoveDiscordSettings}
    if($instanceChannel.Listen.WaitOne(0)){Show-CoveOnCall -Listen}
    elseif($instanceChannel.Show.WaitOne(0)){Show-CoveOnCall}
   }
@@ -363,7 +483,7 @@ $timer.Add_Tick({
     $spokenText=[string]$recognized.text
     if($spokenText.Trim()){
      $script:lastHeard='Ouvi: '+$spokenText;$heardLabel.Text=$script:lastHeard;$status.ToolTip=$script:lastHeard
-     $question=[regex]::Replace($spokenText,'(?i)^\s*(?:oi[, ]+)?(?:cove|couve|couvi|coube)\b[ ,.!?:]*','').Trim()
+     $question=[regex]::Replace($spokenText,('(?i)^\s*(?:oi[, ]+)?'+$script:assistantWakePattern+'[ ,.!?:]*'),'').Trim()
      if($question){$certainty=1.0;if($recognized.uncertain){$certainty=0.6};Ask-Cove $question -FromVoice -Confidence $certainty}
      else{Begin-Listening}
     }else{$heardLabel.Text='Nao identifiquei uma frase. Clique na bolinha para tentar de novo.'}
@@ -384,25 +504,49 @@ $timer.Add_Tick({
     else{Add-Message 'Cove' $_.Exception.GetBaseException().Message}
    }finally{$script:loginTask=$null;if($script:loginCancel){$script:loginCancel.Dispose();$script:loginCancel=$null};$sendButton.IsEnabled=$true}
   }
+  if($script:discordTask -and $script:discordTask.IsCompleted){
+   try{$discordAnswer=$script:discordTask.GetAwaiter().GetResult();if($script:localTaskIsMessage){Set-CoveMessageState $script:lastMessageState $(if($discordAnswer -like 'Mensagem enviada para *'){'sent'}else{'observed'}) $discordAnswer};Add-CoveHistoryEntry 'assistant' $discordAnswer;Add-Message 'Cove' $discordAnswer;Say $discordAnswer}
+   catch{$script:state='Idle';$discordError=$_.Exception.GetBaseException().Message;if([string]::IsNullOrWhiteSpace($discordError)){$discordError='O controle do aplicativo falhou antes de concluir a acao.'};if($script:localTaskIsMessage){Set-CoveMessageState $script:lastMessageState 'failed' $discordError};Add-CoveHistoryEntry 'assistant' ('Resultado local: '+$discordError);Add-Message 'Cove' $discordError;Say $discordError}
+   finally{$script:discordTask=$null;$script:localTaskIsMessage=$false;if($script:discordCancel){$script:discordCancel.Dispose();$script:discordCancel=$null};$sendButton.IsEnabled=$true}
+  }
+  if($script:streamActive){Update-StreamSpeech}
   if($script:task -and $script:task.IsCompleted){
    try{
     $answer=$script:task.GetAwaiter().GetResult()
+    if($script:messagePlanPending){
+     $localPlan=Invoke-CoveMessagePlanResponse $answer -OriginalRequest $script:pendingQuestion -DryRun:$SmokeTest
+     Add-CoveHistoryEntry 'user' $script:pendingQuestion
+     if(-not $localPlan.Task){Add-CoveHistoryEntry 'assistant' $localPlan.Message}
+     Set-CoveMessageState $localPlan $(if($localPlan.Task){'running'}else{'awaiting-data'}) $localPlan.Message
+     Write-CoveActionTrace 'planned-message' $(if($localPlan.Task){'controller-started'}else{'awaiting-data'})
+     Add-Message 'Cove' $localPlan.Message
+     if($localPlan.Task){$script:localTaskIsMessage=$true;$script:discordTask=$localPlan.Task;$script:state='Thinking';$sendButton.IsEnabled=$false}
+     else{if($script:discordCancel){$script:discordCancel.Dispose();$script:discordCancel=$null};$script:listenAfterSpeech=$localPlan.AwaitReply;Say $localPlan.Message}
+    }else{
+    $script:lastConversationalAnswer=[pscustomobject]@{Text=$answer;Until=[datetime]::Now.AddMinutes(20)}
     $script:history=@($script:history)+@(@{role='user';content=$script:pendingQuestion},@{role='assistant';content=$answer})
-    if($script:history.Count -gt 16){$script:history=@($script:history|Select-Object -Last 16)}
-    Add-Message 'Cove' $answer;Say $answer
-   }catch{$script:state='Idle';Add-Message 'Cove' $_.Exception.GetBaseException().Message;$chat.Show()}
-   finally{$script:task=$null;if($script:cancel){$script:cancel.Dispose();$script:cancel=$null};$sendButton.IsEnabled=$true}
+    if($script:history.Count -gt 24){$script:history=@($script:history|Select-Object -Last 24)}
+    Add-Message 'Cove' $answer
+    if($script:streamActive){Update-StreamSpeech -Finish;if(-not $script:streamHadText -and -not $script:suppressSpeech){$script:speechQueue.Enqueue($answer)}}else{Say $answer}
+    }
+   }catch{if($script:messagePlanPending){Set-CoveMessageState $script:lastMessageState 'failed' $_.Exception.GetBaseException().Message};$script:state='Idle';$script:speechQueue.Clear();$script:suppressSpeech=$true;$voiceEngine.Stop();$script:speechTask=$null;Add-Message 'Cove' $_.Exception.GetBaseException().Message;$chat.Show()}
+   finally{$script:task=$null;$script:messagePlanPending=$false;$script:streamActive=$false;if(-not $script:speechTask -and -not $script:discordTask){$script:state='Idle'};if($script:cancel){$script:cancel.Dispose();$script:cancel=$null};$sendButton.IsEnabled=-not [bool]$script:discordTask}
   }
   if($script:speechTask -and $script:speechTask.IsCompleted){
    try{$script:speechTask.GetAwaiter().GetResult()|Out-Null}catch{if(-not $script:speechTask.IsCanceled){$voiceError=$_.Exception.GetBaseException().Message;Add-Message 'Cove' $voiceError;if($script:voiceHint){$script:voiceHint.Text=$voiceError}}}
-   $script:speechTask=$null;if($script:state -eq 'Speaking'){$script:state='Idle';$script:cooldown=[datetime]::Now.AddMilliseconds(900)}
-   if($script:listenAfterSpeech){$script:resumeListeningAt=[datetime]::Now.AddMilliseconds(1000);$script:listenAfterSpeech=$false}
+   $script:speechTask=$null;if($script:state -eq 'Speaking'){$script:state=if($script:task){'Thinking'}else{'Idle'};$script:cooldown=[datetime]::Now.AddMilliseconds(450)}
+   if($script:listenAfterSpeech){$followDelay=if($script:discordDialog -or $script:messageDialog -or $script:pendingMessageText){350}else{1000};$script:resumeListeningAt=[datetime]::Now.AddMilliseconds($followDelay);$script:listenAfterSpeech=$false}
+  }
+  if(-not $script:speechTask -and $script:speechQueue.Count -gt 0 -and -not $script:suppressSpeech){Say ($script:speechQueue.Dequeue())}
+  if($script:warmTasks.Count){
+   $remainingWarm=@();foreach($warm in $script:warmTasks){if($warm.IsCompleted){try{$warm.GetAwaiter().GetResult()|Out-Null}catch{}}else{$remainingWarm+=@($warm)}};$script:warmTasks=$remainingWarm
   }
   if($script:resumeListeningAt -ne [datetime]::MinValue -and [datetime]::Now -ge $script:resumeListeningAt){
    if($script:listener -and -not $script:listener.Ready -and -not $script:lastError){$script:resumeListeningAt=[datetime]::Now.AddMilliseconds(500)}
    else{$script:resumeListeningAt=[datetime]::MinValue;Begin-Listening}
   }
   if($script:pendingAppName -and [datetime]::Now -gt $script:pendingAppUntil){$script:pendingAppName=''}
+  if($script:discordDialog -and [datetime]::Now -ge $script:discordDialog.Until){$script:discordDialog=$null}
   Update-Capture
   if($script:listener){
    if($script:micMeter){$script:micMeter.Value=[Math]::Min(100,$script:listener.Level*100)}
@@ -417,7 +561,7 @@ $timer.Add_Tick({
     if($ev.StartsWith('ERROR:')){Add-Message 'Cove' $ev.Substring(6);$script:lastError=$ev.Substring(6);$chat.Show();continue}
     if($script:listener.Paused -or $script:state -in @('Thinking','Speaking') -or $script:muted){continue}
     if($ev -eq 'AUDIO'){$pcm=[byte[]]@();if($script:listener.Audio.TryDequeue([ref]$pcm)){Start-CoveTranscription $pcm};continue}
-    if($ev -eq 'WAKE'){$script:lastHeard='Nome reconhecido: Cove';$status.ToolTip='Nome reconhecido. Pode fazer sua pergunta.';$heardLabel.Text='Estou ouvindo. Pode fazer sua pergunta.';Begin-Listening -FromWake;continue}
+    if($ev -eq 'WAKE'){$script:lastHeard=('Nome reconhecido: '+$script:assistantName);$status.ToolTip='Nome reconhecido. Pode fazer sua pergunta.';$heardLabel.Text='Estou ouvindo. Pode fazer sua pergunta.';Begin-Listening -FromWake;continue}
     $text='';$final=$false;$confidence=1.0
     if($ev.StartsWith('FINAL:')){
      $recognition=$ev.Substring(6)|ConvertFrom-Json;$text=$recognition.text;$final=$true
@@ -426,46 +570,52 @@ $timer.Add_Tick({
     elseif($ev.StartsWith('PARTIAL:')){$text=($ev.Substring(8)|ConvertFrom-Json).partial}
     if(-not $text){continue}
     $script:lastHeard='Ouvi: '+$text;$status.ToolTip=$script:lastHeard;$heardLabel.Text=$script:lastHeard
-    $hasWake=$text -match '(?i)\b(cove|couve|couvi)\b'
+    $hasWake=$text -match ('(?i)'+$script:assistantWakePattern)
     if($script:state -eq 'Idle' -and $hasWake){Begin-Listening}
     if($script:state -eq 'Listening'){
      if(-not $final){$script:listenUntil=[datetime]::Now.AddSeconds(12)}
-     if($final){$question=[regex]::Replace($text,'(?i)^.*?\b(cove|couve|couvi)\b[ ,.!?]*','').Trim();if($question -and $question -notmatch '^(oi|ola)$'){Ask-Cove $question -FromVoice -Confidence $confidence}}
+     if($final){$question=[regex]::Replace($text,('(?i)^.*?'+$script:assistantWakePattern+'[ ,.!?]*'),'').Trim();if($question -and $question -notmatch '^(oi|ola)$'){Ask-Cove $question -FromVoice -Confidence $confidence}}
     }
    }
   }
   if($script:state -eq 'Listening' -and [datetime]::Now -gt $script:listenUntil){$script:state='Idle'}
   switch($script:state){
-   'Listening'{$color='#087D69';$label='Ouvindo...'}
-   'Thinking'{$color='#9A6915';$label='Pensando...'}
+   'Listening'{$color='#176C66';$label='Ouvindo...'}
+   'Thinking'{$color='#485A92';$label='Pensando...'}
    'Transcribing'{$color='#31667A';$label='Entendendo sua fala...'}
-   'Speaking'{$color='#7954BE';$label='Respondendo'}
+   'Speaking'{$color='#6051A0';$label='Respondendo'}
    default{
     $color='#345F95'
     if($script:loginTask){$label='Conectando ChatGPT...'}
     elseif($script:muted){$label='Microfone pausado';$color='#4D5664'}
-    elseif($script:listener -and $script:listener.Ready){$label='Diga Cove'}
+    elseif($script:listener -and $script:listener.Ready){$label='Diga '+$script:assistantName}
     elseif($script:listener -and -not $script:lastError){$label='Preparando a escuta...'}
     else{$label='Microfone indisponivel'}
    }
   }
+  if(-not $script:muted){$color=switch($script:state){'Listening'{$script:appearance.Palette.Listening};'Thinking'{$script:appearance.Palette.Thinking};'Transcribing'{$script:appearance.Palette.Thinking};'Speaking'{$script:appearance.Palette.Speaking};default{$script:appearance.Palette.Idle}}}
   $orb.Background=$color;$status.Text=$label
-  $animationMode=if($script:state -in @('Listening','Speaking')){'Active'}else{'Idle'}
+  $animationMode=if($script:muted){'Paused'}elseif($script:state -in @('Thinking','Transcribing')){'Thinking'}else{$script:state}
   if($orb.Tag -ne $animationMode){$orb.Tag=$animationMode}
-  if($script:state -eq 'Listening' -and $script:listener){$glow.BlurRadius=22+22*$script:listener.Level}else{$glow.BlurRadius=22};$glow.Color=[Windows.Media.ColorConverter]::ConvertFromString($color)
+  if($script:state -eq 'Listening' -and $script:listener){$glow.BlurRadius=24+12*$script:listener.Level}else{$glow.BlurRadius=24};$glow.Color=[Windows.Media.ColorConverter]::ConvertFromString($color)
  }catch{$script:state='Idle';Add-Message 'Cove' 'Ocorreu um erro na escuta. Reinicie o Cove ou digite sua pergunta.'}
 })
 $window.Add_Closed({
  $timer.Stop();$script:quitting=$true
+ if($script:mouseTestTimer){$script:mouseTestTimer.Stop()}
+ if($script:mouseTestProcess){try{if(-not $script:mouseTestProcess.HasExited){$script:mouseTestProcess.Kill();$script:mouseTestProcess.WaitForExit(2000)|Out-Null}}catch{}finally{$script:mouseTestProcess.Dispose();$script:mouseTestProcess=$null}}
+ if($script:discordCancel){$script:discordCancel.Cancel()}
  if($script:cancel){$script:cancel.Cancel();$script:cancel.Dispose()}
  if($script:loginCancel){$script:loginCancel.Cancel();$script:loginCancel.Dispose()}
  if($script:listener){$script:listener.Dispose()}
  $transcriber.Dispose()
  try{$voiceEngine.Dispose()}catch{}
  $script:key='';$script:history=@();$chat.Close()
+ if(-not $SmokeTest){try{$runtimeFile=Join-Path $PSScriptRoot 'cove-runtime.json';$runtime=Get-Content -LiteralPath $runtimeFile -Raw|ConvertFrom-Json;if($runtime.Pid -eq $PID){Remove-Item -LiteralPath $runtimeFile}}catch{}}
  Close-CoveInstanceChannel $instanceChannel
+ if($script:selfRestart){Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList ('-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'CoveLauncher.ps1')+'" -ShowDiscord') -WindowStyle Hidden}
 })
-$window.Add_ContentRendered({if($SmokeTest){$chat.Show();'WINDOW_RENDERED_V3'|Set-Content -LiteralPath (Join-Path $PSScriptRoot 'smoke-test.log')}elseif($ListenOnStart){Show-CoveOnCall -Listen}})
+$window.Add_ContentRendered({if($SmokeTest){$chat.Show();'WINDOW_RENDERED_V3'|Set-Content -LiteralPath (Join-Path $PSScriptRoot 'smoke-test.log')}else{Write-CoveRuntime $PSScriptRoot $script:buildId;if($OpenDiscordSettings){Show-CoveDiscordSettings}elseif($ListenOnStart){Show-CoveOnCall -Listen}}})
 $timer.Start()
 if($SmokeTest){
  $smokeTimer=New-Object Windows.Threading.DispatcherTimer

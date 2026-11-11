@@ -1,0 +1,37 @@
+VOZ E MICROFONE
+
+Feche o Cove pelo menu > Sair e abra Abrir-Cove.cmd novamente.
+Abra Conversar > Ajustes.
+
+VOZ
+Agora e possivel escolher vozes brasileiras do Windows, incluindo Daniel e
+Maria quando instaladas. Use Ouvir esta voz para comparar. A opcao inicial
+desta versao e Daniel, para trocar a voz anterior. Clique Aplicar voz e
+microfone para salvar sua escolha. Sao vozes sintetizadas locais do Windows;
+nao sao as vozes naturais do ChatGPT nem geram cobranca de API de audio.
+
+MICROFONE
+Selecione o dispositivo em Microfone e clique Aplicar voz e microfone.
+No computador foi encontrado um FIFINE e tambem entradas de webcam e audio
+integrado. Se estiver usando o FIFINE, escolha a entrada com esse nome.
+Fale e veja se a barra de volume se move. A barra nao representa confianca
+de transcricao: ela mostra somente a intensidade do sinal recebido.
+
+Se a barra se mover: diga Cove (pronuncia Couve), espere ficar verde e faca
+sua pergunta. A nova escuta do nome tem vocabulario restrito a couve e
+sons desconhecidos; a pergunta usa vocabulario geral em portugues.
+Use o clique na bolinha para fazer perguntas sem depender do nome.
+O texto reconhecido aparece na janela Conversar.
+
+Se a barra nao se mover: teste outro dispositivo, confira o volume de
+entrada no Windows e a permissao de microfone para apps da area de trabalho.
+O reconhecimento aceita microfones mono ou stereo em 16, 44.1 ou 48 kHz,
+convertendo o sinal para o formato esperado pelo modelo.
+
+Enquanto o Cove fala, pensa ou conecta sua conta, o reconhecimento fica
+pausado para nao interpretar a propria resposta como uma pergunta.
+
+Validado no Codex: interface, catalogo de vozes e dispositivos, carregamento
+do reconhecedor do nome, conversao de PCM e sintaxe/compilacao.
+O audio real precisa ser conferido na sua area de trabalho; o ambiente
+isolado do Codex nao pode confirmar o som do microfone ou dos alto-falantes.

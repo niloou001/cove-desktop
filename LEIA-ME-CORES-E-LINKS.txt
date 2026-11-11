@@ -1,0 +1,35 @@
+Novos Ajustes: cor e chamadas por link
+
+Carregue a atualizacao: botao direito na bolinha > Sair, depois abra a Cove.
+
+Personalizar a Cove
+Abra Ajustes > Personalizar a Cove.
+Escolha Menta, Oceano, Violeta, Rosa, Dourado ou Coral.
+Escolher cor abre a paleta completa do Windows. Tambem aceita #RRGGBB.
+Clique Aplicar cor: a bolinha muda na hora e a preferencia fica salva para
+as proximas aberturas. O fundo dos Ajustes continua opaco.
+A preferencia fica local em cove-appearance.json.
+
+Calls por links salvos
+Abra Ajustes > Calls do Discord: links salvos.
+Cadastre servidor, nome da call e o link copiado do canal de voz.
+Salve cada call uma vez. Pode haver varios canais do mesmo servidor e
+canais com o mesmo nome em servidores diferentes.
+Depois peca normalmente, por exemplo: entre no servidor chamado CAPS e
+entra na call Geral.
+O metodo abre diretamente o link no Discord Desktop e tenta conectar a voz,
+sem percorrer as pastas de servidores. Ainda precisa do Discord conectado
+a sua conta e dos controles de voz para concluir/confirmar a entrada.
+Abrir o link nao e considerado prova de conexao.
+Entrar na selecionada permite experimentar uma call salva por acao sua.
+Para manter o metodo antigo, desmarque Usar links salvos para entrar nas calls.
+A lista de links fica local em cove-discord-links.json, excluida do Git.
+Nao usa token da conta Discord, bot ou API privada.
+
+Validacao
+Verificar-Aparencia.ps1 verifica a mudanca de cor em recursos WPF reais.
+Verificar-Ajustes-Extras.ps1 verifica os eventos reais dos botoes em arquivos
+temporarios, sem alterar suas preferencias nem abrir uma call.
+Verificar-Links-Discord.ps1 verifica os destinos e a validacao de links.
+Verificar-Navegacao-Discord.ps1 inclui o novo caminho sem a lista de servidores
+em uma janela simulada. A conexao no Discord real ainda deve ser validada.

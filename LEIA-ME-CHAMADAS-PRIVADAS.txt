@@ -1,0 +1,20 @@
+Atualize pela opcao Atualizar Cove na Area de Trabalho.
+
+Servidores: "Cove entre no servidor NOME e entra na call CANAL".
+Nao precisa cadastrar cada servidor. A conta precisa ter acesso ao canal.
+A Cove percorre a lista, pastas e categorias do Discord Desktop.
+
+Amigos: "Cove liga para NOME no Discord" ou "entra na call com NOME".
+Para privados, usa o seletor de conversas do Discord e exige um resultado
+identificado como usuario, com o nome solicitado. Depois verifica o destinatario
+na barra da conversa antes de clicar em Iniciar chamada de voz.
+Se houver nomes iguais, use o nome de usuario completo.
+O amigo precisa atender; acionar o botao nao significa que ele atendeu.
+
+O modo Mouse continua usando as coordenadas dos dois monitores.
+Esc ou movimento manual interrompe. Se o Discord nao expuser os controles
+necessarios, a Cove informa a falha sem ligar para outro destino.
+
+Validacao: compilacao, interpretacao, encaminhamento de tarefas e navegacao
+em janelas simuladas. Chamada privada real ainda precisa ser verificada
+na sessao do usuario; os testes nao telefonam para contatos.

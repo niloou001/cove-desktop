@@ -1,0 +1,35 @@
+O problema de roteamento
+
+A versao em execucao estava atualizada, mas a frase sobre falta de confirmacao
+nao vinha dos retornos atuais do controlador local. Pedidos de envio que
+escapavam das formas reconhecidas podiam chegar a conversa generica da IA.
+Perguntas posteriores, como mandou?, tambem nao recebiam o estado local.
+
+Correcao
+
+Pedidos reconhecidos continuam executando pelo caminho local direto.
+Pedidos de mensagem com outras construcoes afirmativas recebem uma
+interpretacao de contato, aplicativo e texto, usando a conexao de IA da Cove.
+Essa interpretacao recebe somente o pedido atual, sem historico de conversa.
+O resultado precisa ser um objeto com tres campos de texto validos.
+Nome e aplicativo precisam aparecer no pedido; dados ausentes sao perguntados.
+Conteudo citado depois de dizendo/falando e preservado literalmente.
+Uma resposta comum de conversa nao pode substituir um comando de envio.
+O JSON nao e falado nem exibido; o controlador local valida o contato e envia.
+
+A Cove mantem em memoria o estado do ultimo envio. Mandou? e Enviou?
+consultam esse estado, sem depender da memoria da conversa da IA.
+Falhas continuam sendo informadas; nao se transforma falta de prova em sucesso.
+O arquivo cove-action-status.json registra apenas etapa, rota, versao, PID
+e horario, sem texto de mensagem ou nomes de contatos.
+
+Teste
+
+Verificar-Planejador-Mensagens.ps1 usa Ask-Cove real e uma conta simulada.
+Verifica que pedidos fora das formas antigas chegam ao envio local uma vez,
+que o plano nao e falado, que recusas de conversa/JSON invalido nao executam,
+que dados inventados nao sao usados e que Mandou? le o estado local.
+Os testes de envio e abertura da interface tambem passaram.
+Nao foi enviado recado real nem validada aqui uma sessao real do Discord.
+
+Abra Atualizar Cove na Area de Trabalho para carregar esta correcao.

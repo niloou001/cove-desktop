@@ -1,0 +1,18 @@
+Correcoes no Discord:
+- O seletor de conversas espera os controles aparecerem, por ate 4 segundos.
+- Aceita a busca como ComboBox ou TextBox; quando ValuePattern nao esta
+  disponivel, digita apenas depois de verificar o foco dentro do seletor.
+- Rele o seletor depois de atualizar os resultados.
+- Mensagens verificam o destinatario no cabecalho e no campo Message @NOME.
+  Nao exigem mais um botao Iniciar chamada de voz para enviar texto.
+- Pedidos como manda um oi para NOME no Discord e diga para NOME no Discord
+  que TEXTO sao tratados localmente. Texto e pontuacao sao preservados.
+- Um envio com texto visivel na conversa e campo limpo informa Mensagem
+  enviada. Texto que permaneceu no rascunho informa que nao foi enviado.
+  Se so o clique foi observado, informa o clique sem afirmar entrega.
+- Nao repete envios automaticamente e nao remove verificacoes do contato.
+
+Validacao: testes de interpretacao e envio simulado; janela propria com busca
+atrasada e ComboBox; destinatario incorreto bloqueado; mensagem aceita sem
+botao de voz. Nenhuma mensagem ou ligacao real nos testes.
+Abra Atualizar Cove para carregar os arquivos novos na instancia em uso.

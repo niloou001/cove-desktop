@@ -1,0 +1,27 @@
+Carregar a versao nova da Cove
+
+Na Area de Trabalho, abra Atualizar Cove.
+Ele tenta encerrar normalmente a janela da instancia antiga desta pasta,
+aguarda a liberacao da instancia e abre a versao nova em Calls do Discord e mouse.
+Nao usa encerramento forcado nem fecha outros aplicativos.
+Se nao conseguir fechar a instancia antiga, mostra uma mensagem explicando
+como sair pelo menu da bolinha, sem dizer que a atualizacao foi carregada.
+
+O atalho normal Cove tambem passou a conferir a versao dos arquivos antes de
+reaproveitar uma instancia existente. As preferencias de cor, audio e calls nao
+mudam a versao e nao provocam reinicios desnecessarios.
+Novas instancias registram PID e versao em cove-runtime.json.
+A tela de Ajustes mostra a versao e deixa Calls do Discord e mouse aberta no
+inicio. A conversa e o menu da bolinha tambem possuem Discord e mouse.
+O menu da bolinha possui Reiniciar / atualizar.
+
+Em recargas entre versoes novas, a conversa recente tenta ser preservada em
+um arquivo temporario protegido pelo Windows para o usuario atual. A copia
+e consumida ao recuperar a sessao. Em versoes antigas, a preservacao depende
+de a janela permitir a leitura do historico; nao e garantida.
+A sessao de desenvolvimento nao possui o perfil Windows necessario para testar
+DPAPI, portanto a preservacao criptografada nao foi validada aqui.
+Nao ha gravacao de chave da API ou token de login nesse arquivo de recarga.
+
+Testes: Verificar-Atualizacao.ps1, Verificar-Ativacao.ps1 e SmokeTest.
+Nenhum processo da Cove em uso foi fechado durante os testes automatizados.

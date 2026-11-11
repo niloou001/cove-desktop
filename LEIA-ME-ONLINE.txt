@@ -1,0 +1,32 @@
+Abra Atualizar Cove na Area de Trabalho para carregar esta versao.
+
+Chamadas: "Cove faca uma ligacao para Joao no Discord".
+O pedido inicia uma tarefa local no Discord Desktop, antes da conversa com IA.
+O destinatario e o botao de voz precisam ser identificados; a outra pessoa
+precisa atender. Os testes nao fizeram chamadas reais.
+
+"Que horas sao?" / "Que dia e hoje?": relogio e fuso do Windows, sem internet.
+"Noticias de hoje": ate tres manchetes recentes do RSS BBC News Brasil,
+com data e links no chat. Os links nao sao lidos pela voz.
+"Qual a temperatura em Curitiba, Parana?": Open-Meteo, com horario dos dados.
+Defina a cidade em Ajustes > Horario, temperatura e noticias ou diga
+"minha cidade e Curitiba, Parana". Nao e usada geolocalizacao automatica.
+Sem cidade definida, a Cove pergunta e guarda sua resposta.
+"Pesquise sobre aves brasileiras no Chrome": abre a pesquisa Google no Chrome.
+Abre os resultados; nao afirma ter lido paginas ou resumido a pesquisa.
+
+Horarios e comandos locais dispensam consulta a IA. A fala em streaming comeca
+com trechos menores. Consultas de temperatura e noticias sao assincronas,
+com timeout e cache curto em memoria. Respostas antigas nao sao apresentadas
+como atuais. A velocidade final depende da internet e da geracao da voz.
+
+Fontes: https://open-meteo.com/en/docs
+https://open-meteo.com/en/docs/geocoding-api
+https://feeds.bbci.co.uk/portuguese/rss.xml
+
+Validacao local: interpretacao e roteamento real de Ask-Cove, URL da busca
+sem executar texto como comando, relogio, cidade salva, formato dos dados,
+datas das noticias, rejeicao de temperatura antiga e teste de abertura da UI.
+Consultas reais ficaram bloqueadas nesta sessao de ferramentas por erro
+do Windows: Credenciais nao disponiveis no pacote de seguranca.
+Nao foi confirmada aqui uma chamada real nem uma consulta online bem-sucedida.

@@ -1,0 +1,31 @@
+Atualizacao de voz e acesso a arquivos
+
+Feche o Cove em Sair e abra novamente pelo atalho Cove.
+A voz Serena/Atlas comeca pela primeira frase e prepara as proximas enquanto toca.
+Teste local com o mesmo texto e modelo frio: primeiro audio 12,84 s antes; 3,90 s depois.
+O tempo varia conforme texto e carga do computador. Na conexao ChatGPT, a fala agora comeca pelas primeiras frases recebidas, antes da resposta completa. No modo chave de API, a resposta ainda e recebida inteira antes da voz.
+
+Comandos locais (tambem podem ser digitados):
+liste os discos
+listar pasta Documentos
+abrir pasta Downloads
+abrir pasta Area de Trabalho
+listar pasta D:\
+leia arquivo C:\caminho\anotacoes.txt
+
+Acesso com as permissoes atuais da conta Windows, em qualquer disco local.
+Leitura por voz: txt, md, csv, json, log; ate 1 MB e primeiros 4000 caracteres.
+Listagem: primeiros 30 itens. Nao busca subpastas automaticamente.
+Os textos consultados ficam no aplicativo e nao sao enviados a IA por esses comandos.
+Controle de mouse/teclado e criacao, edicao, movimentacao e exclusao de arquivos: consulte LEIA-ME-CONTROLE.txt. Diga comandos do computador.
+Copias dos arquivos anteriores: sufixo .antes-rapidez.bak.
+
+Melhorias adicionais de desempenho
+- Voz e reconhecimento sao carregados em segundo plano ao abrir o Cove.
+- Confirmacoes curtas repetidas reaproveitam audio em memoria: cache limitado a 32 trechos e 8 MB.
+- Teste local: Abrindo Discord levou 1,36 s para gerar pela primeira vez e 0,003 s na repeticao. Nao e uma medida do tempo total da conversa.
+- A pausa para finalizar a captura caiu de 1,1 s para 0,8 s; a retomada apos a fala caiu de 0,9 s para 0,45 s.
+- O catalogo de modelos ChatGPT fica em memoria por ate 10 minutos e e renovado apos erro ou alteracao de login.
+- Nao houve troca do modelo de reconhecimento nem reducao de qualidade da transcricao.
+- Discord reaproveita a janela aberta e procura somente controles interativos.
+- Teste da fila de fala e interrupcao: Verificar-Desempenho.ps1.

@@ -5,10 +5,12 @@ No account credentials, network calls, or user speech recordings are used here.
 import argparse
 import base64
 import contextlib
+from collections import OrderedDict
 import io
 import json
 import logging
 import os
+import re
 from pathlib import Path
 import sys
 import wave
@@ -17,6 +19,25 @@ PRESETS = {
     "serena": {"voice": "pf_dora", "speed": 0.90},
     "atlas": {"voice": "pm_santa", "speed": 0.96},
 }
+
+
+_audio_cache = OrderedDict()
+_audio_cache_bytes = 0
+
+def cached_synthesize(engine, text, preset):
+    global _audio_cache_bytes
+    key = (id(engine), preset, text)
+    if key in _audio_cache:
+        _audio_cache.move_to_end(key)
+        return _audio_cache[key]
+    audio = synthesize(engine, text, preset)
+    if len(text) <= 180 and len(audio) <= 2_000_000:
+        _audio_cache[key] = audio
+        _audio_cache_bytes += len(audio)
+        while len(_audio_cache) > 32 or _audio_cache_bytes > 8_000_000:
+            _, previous = _audio_cache.popitem(last=False)
+            _audio_cache_bytes -= len(previous)
+    return audio
 
 
 def synthesize(engine, text, preset):
@@ -41,6 +62,22 @@ def synthesize(engine, text, preset):
         wav.setframerate(int(rate))
         wav.writeframes(pcm)
     return out.getvalue()
+
+
+def speech_chunks(text, limit=160):
+    if not isinstance(text, str) or not text.strip() or len(text) > 12000:
+        raise ValueError("Invalid text length")
+    # Start with a short sentence, retaining every word and punctuation mark.
+    for sentence in re.split(r"(?<=[.!?;])\s+|\n+", text.strip()):
+        words = sentence.split()
+        chunk = ""
+        for word in words:
+            if chunk and len(chunk) + len(word) + 1 > limit:
+                yield chunk
+                chunk = ""
+            chunk = (chunk + " " + word).strip()
+        if chunk:
+            yield chunk
 
 
 def main():
@@ -80,9 +117,19 @@ def main():
     for line in sys.stdin:
         try:
             request = json.loads(line)
-            with contextlib.redirect_stdout(sys.stderr):
-                audio = synthesize(engine, request.get("text"), request.get("preset"))
-            result = {"audio": base64.b64encode(audio).decode("ascii")}
+            if request.get("warmup"):
+                result = {"ready": True}
+            elif request.get("stream"):
+                for chunk in speech_chunks(request.get("text")):
+                    with contextlib.redirect_stdout(sys.stderr):
+                        audio = cached_synthesize(engine, chunk, request.get("preset"))
+                    protocol.write(json.dumps({"audio": base64.b64encode(audio).decode("ascii")}) + "\n")
+                    protocol.flush()
+                result = {"done": True}
+            else:
+                with contextlib.redirect_stdout(sys.stderr):
+                    audio = cached_synthesize(engine, request.get("text"), request.get("preset"))
+                result = {"audio": base64.b64encode(audio).decode("ascii")}
         except Exception:
             # Never echo personal text, tracebacks, or model input to the UI/log.
             result = {"error": "A voz natural nao conseguiu gerar o audio. Execute Preparar-Vozes.cmd novamente."}

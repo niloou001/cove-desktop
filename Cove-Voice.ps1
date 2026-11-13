@@ -119,13 +119,31 @@ $heardLabel.Text='Diga '+$script:assistantName+' e espere ficar verde, ou clique
 $chat.Add_Closing({param($sender,$eventArgs) if(-not $script:quitting){$eventArgs.Cancel=$true;$chat.Hide()}})
 function Add-Message([string]$who,[string]$text){$transcript.AppendText($who+': '+$text+"`r`n`r`n");$transcript.ScrollToEnd()}
 function Update-Capture {if($script:listener){$script:listener.Paused=$script:muted -or $null -ne $script:loginTask -or $null -ne $script:discordTask -or $null -ne $script:task -or ($script:mouseTestProcess -and -not $script:mouseTestProcess.HasExited) -or $script:state -in @('Thinking','Speaking','Transcribing') -or [datetime]::Now -lt $script:cooldown;$script:listener.ListeningMode=$script:state -eq 'Listening'}}
+function Test-CoveListeningFiles {
+ $native=Join-Path $PSScriptRoot 'assets\native\libvosk.dll'
+ $model=Join-Path $PSScriptRoot 'assets\vosk-model-small-pt-0.3'
+ return (Test-Path -LiteralPath $native) -and ((Test-Path -LiteralPath (Join-Path $model 'final.mdl')) -or (Test-Path -LiteralPath (Join-Path $model 'am\final.mdl')))
+}
+function Get-CoveListeningHint {
+ if($script:micSetup -and -not $script:micSetup.HasExited){return 'Preparando a escuta local. Aguarde o download terminar.'}
+ if(-not (Test-CoveListeningFiles)){return 'A escuta local ainda nao foi instalada neste computador. Abra Ajustes e clique em Preparar microfone e escuta local.'}
+ if($script:lastError){return $script:lastError+' Abra Ajustes para conferir o dispositivo, as permissoes e tentar novamente.'}
+ return 'O microfone esta iniciando. Aguarde alguns segundos; se continuar assim, abra Ajustes e clique em Tentar microfone novamente.'
+}
+function Start-CoveMicrophoneSetup {
+ if($script:micSetup -and -not $script:micSetup.HasExited){return}
+ if($SmokeTest){return}
+ $log=Join-Path $PSScriptRoot '.cove-audit';[IO.Directory]::CreateDirectory($log)|Out-Null
+ $script:micSetup=Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'Preparar-Cove.ps1')+'"') -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $log 'microphone-setup.out.txt') -RedirectStandardError (Join-Path $log 'microphone-setup.err.txt')
+ $null=$script:micSetup.Handle
+}
 function Restart-Listener {
  $transcriber.Stop();$script:transcribeTask=$null
  if($script:listener){$script:listener.Dispose();$script:listener=$null}
  $script:lastError='';$script:lastHeard=''
  if($script:state -in @('Listening','Transcribing')){$script:state='Idle'}
  if($sendButton){$sendButton.IsEnabled=-not ($script:task -or $script:discordTask -or $script:loginTask)}
- if(-not $SmokeTest -and $modelReady -and (Test-Path -LiteralPath (Join-Path $assets 'native\libvosk.dll'))){$script:listener=New-Object CoveApp.Listener((Join-Path $assets 'native'),(Join-Path $assets 'vosk-model-small-pt-0.3'),$script:micId,$script:assistantName);$script:listener.UseNeural=$transcriber.Installed;Update-Capture}
+ if(-not $SmokeTest -and (Test-CoveListeningFiles)){$script:listener=New-Object CoveApp.Listener((Join-Path $assets 'native'),(Join-Path $assets 'vosk-model-small-pt-0.3'),$script:micId,$script:assistantName);$script:listener.UseNeural=$transcriber.Installed;Update-Capture}
 }
 function Set-ConnectionMode([string]$value){[IO.File]::WriteAllText($modeFile,$value);$script:mode=$value;$script:history=@()}
 function Start-ChatGPTConnection([string]$action){
@@ -243,6 +261,11 @@ function Show-Settings([switch]$Discord){
 <TextBlock x:Name="RecognitionStatus" Foreground="#91A6BE" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
 <Button x:Name="ImproveListening" Content="Preparar escuta aprimorada" Background="Transparent" Margin="0,0,0,10"/>
 <ComboBox x:Name="MicList" DisplayMemberPath="Name"/>
+<Button x:Name="PrepareMicrophone" Content="Preparar microfone e escuta local" Background="Transparent" Margin="0,8,0,0"/>
+<Button x:Name="RetryMicrophone" Content="Tentar microfone novamente" Background="Transparent" Margin="0,8,0,0"/>
+<Button x:Name="MicrophonePrivacy" Content="Permissoes do microfone no Windows" Background="Transparent" Margin="0,8,0,0"/>
+<Button x:Name="MicrophoneSound" Content="Dispositivo de entrada no Windows" Background="Transparent" Margin="0,8,0,0"/>
+<TextBlock Text="No Windows, permita Acesso ao microfone e Permitir que aplicativos da area de trabalho acessem o microfone. O Cove pode aparecer como Windows PowerShell. Em Som, confira se o microfone esta habilitado e selecionado como entrada." TextWrapping="Wrap" Foreground="#91A6BE" FontSize="11" Margin="0,8,0,0"/>
 <ProgressBar x:Name="MicMeter" Minimum="0" Maximum="100" Height="6" Margin="0,12,0,6" Foreground="#67D9BE" Background="#203247" BorderThickness="0"/>
 <TextBlock x:Name="MicHint" Text="Fale e observe o nivel do microfone." Foreground="#91A6BE" FontSize="11" TextWrapping="Wrap"/>
 <TextBlock Text="Palavras e nomes que voce usa" Foreground="#D1E4E9" FontSize="13" Margin="0,14,0,6"/>
@@ -289,7 +312,7 @@ function Show-Settings([switch]$Discord){
  $voiceList=$dialog.FindName('VoiceList');$micList=$dialog.FindName('MicList')
  $vocabularyBox=$dialog.FindName('Vocabulary');$vocabularyBox.Text=$script:vocabulary
  $script:asrStatus=$dialog.FindName('RecognitionStatus')
- if($transcriber.Installed){$script:asrStatus.Text='Escuta aprimorada ativada. Fale no seu ritmo.';$dialog.FindName('ImproveListening').Visibility='Collapsed'}else{$script:asrStatus.Text='Escuta leve em uso. Prepare a escuta aprimorada para entender melhor frases naturais.'}
+ if(-not $script:listener -or -not $script:listener.Ready){$script:asrStatus.Text=Get-CoveListeningHint}elseif($transcriber.Installed){$script:asrStatus.Text='Escuta aprimorada ativada. Fale no seu ritmo.';$dialog.FindName('ImproveListening').Visibility='Collapsed'}else{$script:asrStatus.Text='Escuta leve em uso. Prepare a escuta aprimorada para entender melhor frases naturais.'}
  $dialog.FindName('ImproveListening').Add_Click({
   try{
    if($script:asrSetup -and -not $script:asrSetup.HasExited){return}
@@ -320,6 +343,15 @@ function Show-Settings([switch]$Discord){
  $micList.SelectedItem=$devices|Where-Object{$_.Id -eq $script:micId}|Select-Object -First 1
  if(-not $micList.SelectedItem){$micList.SelectedIndex=0}
  $script:micMeter=$dialog.FindName('MicMeter');$script:micHint=$dialog.FindName('MicHint')
+ $dialog.FindName('MicrophonePrivacy').Add_Click({Start-Process 'ms-settings:privacy-microphone'})
+ $dialog.FindName('MicrophoneSound').Add_Click({Start-Process 'ms-settings:sound'})
+ $dialog.FindName('PrepareMicrophone').Add_Click({try{Start-CoveMicrophoneSetup;$script:micHint.Text=Get-CoveListeningHint}catch{$script:micHint.Text='Nao consegui iniciar a preparacao. Abra Preparar-Cove.cmd na pasta do Cove.'}})
+ $dialog.FindName('RetryMicrophone').Add_Click({
+  if($script:task -or $script:discordTask -or $script:loginTask -or $script:transcribeTask){$script:micHint.Text='Aguarde a tarefa atual terminar.';return}
+  $devices=@([CoveApp.Listener]::Devices());$micList.ItemsSource=$devices;$micList.SelectedIndex=0;$script:micId=-1
+  if($script:micSetup -and -not $script:micSetup.HasExited){$script:micHint.Text=Get-CoveListeningHint;return}
+  Restart-Listener;$script:micHint.Text=Get-CoveListeningHint
+ })
  $dialog.FindName('TestVoice').IsEnabled=$script:voices.Count -gt 0
  $dialog.FindName('TestVoice').Add_Click({if($voiceList.SelectedItem){
   $script:voiceId=$voiceList.SelectedItem.Id
@@ -497,7 +529,7 @@ function Request-CoveReload([switch]$SelfRestart){
 }
 function Begin-Listening([switch]$FromWake) {
  if($script:task -or $script:transcribeTask -or $script:discordTask -or ($script:mouseTestProcess -and -not $script:mouseTestProcess.HasExited)){return}
- if(-not $script:listener -or -not $script:listener.Ready){$chat.Show();Add-Message 'Cove' 'A escuta ainda nao esta disponivel. Voce pode digitar sua pergunta aqui.';return}
+ if(-not $script:listener -or -not $script:listener.Ready){$chat.Show();Add-Message 'Cove' (Get-CoveListeningHint);return}
  if($script:muted){return}
  $voiceEngine.Stop();$script:speechTask=$null
  $script:listener.ReplayWakeAudio=[bool]$FromWake
@@ -580,6 +612,14 @@ $timer.Interval=[TimeSpan]::FromMilliseconds(80)
 $timer.Add_Tick({
  $script:pulse+=0.16
  try{
+  if($script:micSetup -and $script:micSetup.HasExited){
+   $script:micSetup.WaitForExit();$setupCode=$script:micSetup.ExitCode;$script:micSetup.Dispose();$script:micSetup=$null
+   if($setupCode -eq 0 -and (Test-CoveListeningFiles)){
+    if($script:task -or $script:discordTask -or $script:loginTask -or $script:transcribeTask){$script:micRestartPending=$true;$setupHint='Escuta preparada. O microfone sera iniciado ao terminar a tarefa atual.'}else{Restart-Listener;$setupHint='Escuta local preparada. Iniciando o microfone...'}
+   }else{$setupHint='A preparacao da escuta falhou. Execute Preparar-Cove.cmd para ver o erro; os detalhes tambem ficam em .cove-audit\microphone-setup.out.txt.'}
+   if($script:micHint){$script:micHint.Text=$setupHint};if($script:asrStatus){$script:asrStatus.Text=$setupHint};Add-Message 'Cove' $setupHint
+  }
+  if($script:micRestartPending -and -not ($script:task -or $script:discordTask -or $script:loginTask -or $script:transcribeTask)){$script:micRestartPending=$false;Restart-Listener}
   if($instanceChannel){
    if($instanceChannel.Reload.WaitOne(0)){Request-CoveReload;return}
    if($instanceChannel.DiscordSettings.WaitOne(0)){Show-CoveDiscordSettings}
@@ -679,6 +719,7 @@ $timer.Add_Tick({
    }
    $ev=''
    while($script:listener.Events.TryDequeue([ref]$ev)){
+    if($ev -eq 'READY'){if($script:asrStatus){$script:asrStatus.Text=if($transcriber.Installed){'Microfone pronto. Escuta aprimorada ativada.'}else{'Microfone pronto. Escuta local ativada.'}};continue}
     if($ev.StartsWith('ERROR:')){Add-Message 'Cove' $ev.Substring(6);$script:lastError=$ev.Substring(6);$chat.Show();continue}
     if($script:listener.Paused -or $script:state -in @('Thinking','Speaking') -or $script:muted){continue}
     if($ev -eq 'AUDIO'){$pcm=[byte[]]@();if($script:listener.Audio.TryDequeue([ref]$pcm)){Start-CoveTranscription $pcm};continue}

@@ -68,7 +68,14 @@ namespace CoveApp {
   volatile bool stopping;
   Thread worker;
   readonly int deviceId;
-  static void Check(uint code) { if(code!=0) throw new Exception("Microfone indisponivel (codigo " + code + "). Confira o microfone padrao e sua permissao nas Configuracoes do Windows."); }
+  public static int ResolveDevice(int selected,int count){return selected>=0&&selected<count?selected:-1;}
+  public static string MicrophoneError(uint code){
+   if(code==2)return "O microfone selecionado nao esta mais conectado. Escolha Microfone padrao do Windows em Ajustes e tente novamente.";
+   if(code==4)return "O microfone esta ocupado. Feche o aplicativo que usa o dispositivo em modo exclusivo e tente novamente.";
+   if(code==32)return "O microfone nao aceitou os formatos de audio testados. Confira o dispositivo de entrada nas configuracoes de Som do Windows.";
+   return "Nao consegui abrir o microfone (codigo "+code+"). Em Ajustes, abra Permissoes do microfone e permita o acesso de aplicativos da area de trabalho. Confira tambem o dispositivo de entrada em Som.";
+  }
+  static void Check(uint code) { if(code!=0) throw new Exception(MicrophoneError(code)); }
   static string Utf8(IntPtr p) { if(p==IntPtr.Zero) return "{}"; int n=0; while(Marshal.ReadByte(p,n)!=0)n++; byte[] b=new byte[n]; Marshal.Copy(p,b,0,n);return Encoding.UTF8.GetString(b); }
   public Listener(string nativePath,string modelPath) : this(nativePath,modelPath,-1) {}
   public Listener(string nativePath,string modelPath,int selectedDevice) : this(nativePath,modelPath,selectedDevice,"Cove") {}
@@ -91,11 +98,14 @@ namespace CoveApp {
     vosk_recognizer_set_words(recognizer,1);
     string activeWakeName=WakeName;wake=NewWakeRecognizer(model,activeWakeName);
     if(wake==IntPtr.Zero)throw new Exception("Nao foi possivel iniciar a escuta do nome Cove.");
+    int deviceCount=(int)waveInGetNumDevs();
+    if(deviceCount==0)throw new Exception("O Windows nao encontrou nenhum microfone. Conecte ou habilite um dispositivo de entrada em Som e clique em Tentar microfone novamente nos Ajustes.");
+    int activeDevice=ResolveDevice(deviceId,deviceCount);
     int inputRate=16000,inputChannels=1;uint openCode=1;
     foreach(int rate in new[]{16000,48000,44100}) {
      foreach(int channels in new[]{1,2}) {
       var f=new Format{tag=1,channels=(ushort)channels,rate=(uint)rate,bytes=(uint)(rate*channels*2),align=(ushort)(channels*2),bits=16,extra=0};
-      openCode=waveInOpen(out mic,unchecked((uint)deviceId),ref f,IntPtr.Zero,IntPtr.Zero,0);
+      openCode=waveInOpen(out mic,unchecked((uint)activeDevice),ref f,IntPtr.Zero,IntPtr.Zero,0);
       if(openCode==0){inputRate=rate;inputChannels=channels;break;}
      }if(openCode==0)break;
     }
@@ -155,7 +165,11 @@ namespace CoveApp {
      }
      Thread.Sleep(15);
     }
-   }catch(Exception ex){Events.Enqueue("ERROR:"+ex.Message);}
+   }catch(Exception ex){
+    string reason=ex.Message;
+    if(ex is DllNotFoundException||ex is BadImageFormatException)reason="Nao consegui carregar o reconhecimento local. Execute Preparar-Cove.cmd em um Windows de 64 bits. Se persistir, confira o erro de biblioteca exibido na instalacao.";
+    Events.Enqueue("ERROR:"+reason);
+   }
    finally {
     Ready=false;
     if(mic!=IntPtr.Zero) { waveInReset(mic);foreach(var h in headers)waveInUnprepareHeader(mic,h,hs);waveInClose(mic); }

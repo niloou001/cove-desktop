@@ -6,6 +6,7 @@ try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $assets = Join-Path $PSScriptRoot 'assets'
     New-Item -ItemType Directory -Path $assets -Force | Out-Null
+    try{$installLock=New-Object IO.FileStream((Join-Path $assets 'microphone-install.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)}catch{throw 'A preparacao da escuta local ja esta em andamento. Aguarde terminar.'}
     function Get-Archive($uri, $destination) {
         $part = $destination + '.part'
         Invoke-WebRequest -Uri $uri -OutFile $part -UseBasicParsing -TimeoutSec 240
@@ -34,7 +35,11 @@ try {
         [IO.Compression.ZipFile]::ExtractToDirectory($archive, $stage)
         $source = Join-Path $stage 'vosk-model-small-pt-0.3'
         if (-not (Test-Path -LiteralPath (Join-Path $source 'final.mdl')) -and -not (Test-Path -LiteralPath (Join-Path $source 'am\final.mdl'))) { throw 'O ZIP nao contem o arquivo final.mdl do modelo. Confira assets\portugues.zip.' }
-        if (Test-Path -LiteralPath $model) { throw 'Existe uma instalacao incompleta do modelo. Renomeie a pasta assets\vosk-model-small-pt-0.3 e execute novamente.' }
+        if (Test-Path -LiteralPath $model) {
+            $preserved=[IO.Path]::GetFullPath($model+'.incomplete-'+[guid]::NewGuid().ToString('N'))
+            if([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($model)) -ne [IO.Path]::GetFullPath($assets) -or [IO.Path]::GetDirectoryName($preserved) -ne [IO.Path]::GetFullPath($assets)){throw 'Destino de recuperacao do modelo invalido.'}
+            Move-Item -LiteralPath $model -Destination $preserved
+        }
         Move-Item -LiteralPath $source -Destination $model
     }
     Write-Host 'Pronto. O Cove ja pode usar reconhecimento local de portugues.' -ForegroundColor Green
@@ -43,4 +48,4 @@ try {
     Write-Host ('Nao foi possivel preparar: ' + $_.Exception.Message) -ForegroundColor Red
     Write-Host 'A janela ficara aberta para voce copiar o erro.'
     exit 1
-}
+} finally {if($installLock){$installLock.Dispose()}}

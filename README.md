@@ -30,6 +30,14 @@ Os testes de mensagens usam controladores simulados e janelas próprias. Não fo
 
 ## Requisitos
 
+### Microfone em outro computador
+
+Se aparecer que a escuta nao esta disponivel, abra **Ajustes → Preparar microfone e escuta local** e aguarde o download. A escuta basica sera iniciada sem precisar instalar as vozes ou o Whisper primeiro.
+
+Em **Permissoes do microfone no Windows**, habilite o acesso ao microfone e o acesso de aplicativos da area de trabalho. Como o Cove roda em PowerShell, ele pode aparecer como **Windows PowerShell**. O Cove nao altera essas permissoes automaticamente.
+
+Use **Dispositivo de entrada no Windows** para conferir se o microfone esta habilitado. Depois clique em **Tentar microfone novamente**, que atualiza a lista e usa o microfone padrao. Para escolher outro, selecione-o na lista e clique em **Aplicar voz e microfone**. Erros de preparacao ficam em `.cove-audit/microphone-setup.out.txt` e `.cove-audit/microphone-setup.err.txt`.
+
 - Windows 10 ou 11 de 64 bits, com Windows PowerShell 5.1 e .NET Framework 4.8.
 - Microfone e saída de áudio funcionando; acesso ao microfone permitido para aplicativos da área de trabalho.
 - Internet para baixar os componentes na instalação e para conversar com a IA.

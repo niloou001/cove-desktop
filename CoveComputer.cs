@@ -71,12 +71,7 @@ namespace CoveApp {
   public static void RequireTargetForeground(){
    if(Target!=0&&GetForegroundWindow()==new IntPtr(Target))return;
    if(recoverableWindow!=0&&Target==recoverableWindow){
-    RecoverForeground(recoverableWindow,()=>GetForegroundWindow().ToInt64(),()=>{
-     var window=new IntPtr(recoverableWindow);
-     if(!IsWindow(window))throw new OperationCanceledException("A janela do WhatsApp foi fechada.");
-     if(IsIconic(window))ShowWindow(window,9);
-     SetForegroundWindow(window);
-    },()=>CheckMouseCancel(CancellationToken.None));
+    FocusHandle(recoverableWindow);
     return;
    }
    throw new OperationCanceledException("A janela ativa mudou. Parei o mouse.");

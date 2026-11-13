@@ -365,6 +365,9 @@ namespace CoveApp {
    bool enclosing=type==ControlType.Document||type==ControlType.Pane||type==ControlType.Custom||type==ControlType.Group||type==ControlType.Edit||type==ControlType.Button;
    return enclosing&&RawContains(hit,target);
   }
+  public static bool TryFindClickPoint(AutomationElement element,System.Windows.Rect bounds,out System.Windows.Point point){
+   bool covered;return FindClickPoint(element,bounds,out point,out covered);
+  }
   static bool FindClickPoint(AutomationElement element,System.Windows.Rect bounds,out System.Windows.Point point,out bool covered){
    var points=new List<System.Windows.Point>();System.Windows.Point preferred;
    points.Add(new System.Windows.Point(bounds.Left+bounds.Width/2,bounds.Top+bounds.Height/2));

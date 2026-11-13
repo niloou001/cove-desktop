@@ -100,8 +100,16 @@ namespace CoveApp {
   }
   static bool HitTarget(AutomationElement element,System.Windows.Point point){
    var hit=AutomationElement.FromPoint(point);
-   if(hit==null||hit.Current.ProcessId!=element.Current.ProcessId)return false;
+   if(hit==null)return false;
    return Messaging.CanClickElementAt(element,hit,Computer.WindowAtPoint((int)Math.Round(point.X),(int)Math.Round(point.Y)),Computer.Target);
+  }
+  public static bool RecoverClickTarget(Func<bool> locate,Action restore,Action check,int attempts=3){
+   if(attempts<1||attempts>5)throw new ArgumentOutOfRangeException("attempts");
+   for(int n=0;n<attempts;n++){
+    check();if(locate())return true;
+    if(n+1<attempts){restore();check();}
+   }
+   return false;
   }
   static bool ClickWithMouse(AutomationElement element){
    CheckMouseInterference();if(!mouseOwnsTarget){Computer.PrepareTargetMouse();mouseOwnsTarget=true;}object pattern;
@@ -110,8 +118,16 @@ namespace CoveApp {
    if(element.Current.IsOffscreen)return false;
    var before=element.Current.BoundingRectangle;
    if(before.IsEmpty||before.Width<2||before.Height<2)return false;
-   var point=new System.Windows.Point(before.Left+before.Width/2,before.Top+before.Height/2);
-   if(!HitTarget(element,point))throw new OperationCanceledException("Outra janela esta cobrindo o alvo no Discord. Parei antes de clicar.");
+   var point=new System.Windows.Point();
+   bool ready=RecoverClickTarget(()=>{
+    before=element.Current.BoundingRectangle;
+    return Messaging.TryFindClickPoint(element,before,out point);
+   },()=>{
+    // Restore only the already selected Discord window, then probe fresh
+    // geometry. Trying other verified points also handles Chromium wrappers.
+    Computer.FocusHandle(Computer.Target);Pause(mouseCancellation,150);
+   },()=>CheckMouseInterference());
+   if(!ready)throw new OperationCanceledException("Nao encontrei um ponto livre no controle do Discord apos recuperar a janela e testar outros pontos. Nada foi clicado.");
    Computer.MoveSmooth((int)Math.Round(point.X),(int)Math.Round(point.Y),mouseCancellation);
    var after=element.Current.BoundingRectangle;
    if(Math.Abs(after.Left-before.Left)>2||Math.Abs(after.Top-before.Top)>2||Math.Abs(after.Width-before.Width)>2||Math.Abs(after.Height-before.Height)>2)throw new OperationCanceledException("O Discord mudou de posicao durante o movimento. Nao cliquei.");
@@ -368,7 +384,7 @@ namespace CoveApp {
   }
   static Task<string> PrivateAction(string friend,string message,bool useMouse,CancellationToken token){
    return Task.Run(()=>{
-     AutomationElement root=null;string stage="preparar controle do Discord";IDisposable session=null;
+     AutomationElement root=null;string stage="preparar controle do Discord";IDisposable session=null,focusRecovery=null;
      try{
       session=useMouse?BeginMouseNavigation(token):null;stage="localizar amigo";
       if(String.IsNullOrWhiteSpace(friend)||friend.Length>100||Regex.IsMatch(friend,@"[\x00-\x1F]"))throw new Exception("Informe o nome do amigo.");
@@ -376,6 +392,7 @@ namespace CoveApp {
       var until=DateTime.UtcNow.AddSeconds(12);while(root==null&&DateTime.UtcNow<until){Pause(token,200);root=Root();}
       if(root==null)throw new Exception("Nao consegui acessar a janela do Discord.");
       Computer.FocusHandle(root.Current.NativeWindowHandle);if(mouseNavigation)mouseOwnsTarget=true;
+      focusRecovery=new Computer.RecoverWindowFocus(root.Current.NativeWindowHandle);
       stage="abrir seletor de conversas";
       // Wait for the scoped picker; Chromium can expose its input as a ComboBox
       // or as a textbox without ValuePattern, and focus may arrive later.
@@ -418,7 +435,7 @@ namespace CoveApp {
       throw new Exception(message==null?"Nao encontrei o botao de voz na conversa com "+friend+". Nao iniciei a ligacao.":"O Discord nao mostrou o campo de mensagem da conversa com "+friend+". Nada foi enviado.");
      }catch(OperationCanceledException error){Diagnose(root,"privado",friend,stage,error);if(String.IsNullOrWhiteSpace(error.GetBaseException().Message))throw new OperationCanceledException("A acao no Discord foi interrompida. Confira a conversa antes de repetir.");throw;}
      catch(Exception error){Diagnose(root,"privado",friend,stage,error);if(Stale(error)||Stale(error.GetBaseException())||String.IsNullOrWhiteSpace(error.GetBaseException().Message))throw new Exception(PrivateFailureMessage(stage));throw;}
-     finally{if(session!=null)session.Dispose();}
+     finally{if(focusRecovery!=null)focusRecovery.Dispose();if(session!=null)session.Dispose();}
    },token);
   }
   public static string PrivateFailureMessage(string stage){

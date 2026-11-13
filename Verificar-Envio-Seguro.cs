@@ -2,6 +2,16 @@ using System;using CoveApp;
 namespace CoveTests {
  public static class MessageWorkflow {
   public static string Run(){
+   int probes=0,restores=0;
+   if(!DiscordCall.RecoverClickTarget(()=>++probes==3,()=>restores++,()=>{})||probes!=3||restores!=2)throw new Exception("Covered Discord target was not recovered before clicking");
+   probes=0;restores=0;
+   if(DiscordCall.RecoverClickTarget(()=>{probes++;return false;},()=>restores++,()=>{})||probes!=3||restores!=2)throw new Exception("Permanent overlay must stop after bounded recovery");
+   restores=0;bool recoveryCancelled=false;
+   try{DiscordCall.RecoverClickTarget(()=>false,()=>restores++,()=>{throw new OperationCanceledException("Esc");});}catch(OperationCanceledException){recoveryCancelled=true;}
+   if(!recoveryCancelled||restores!=0)throw new Exception("Overlay recovery ignored cancellation");
+   bool restoreCancelled=false;
+   try{DiscordCall.RecoverClickTarget(()=>false,()=>{throw new OperationCanceledException("User moved mouse");},()=>{});}catch(OperationCanceledException){restoreCancelled=true;}
+   if(!restoreCancelled)throw new Exception("Restore cancellation was swallowed");
    bool fieldFocused=false;string unfocusedDraft="";int focusFirstSends=0;
    Messaging.PrepareAndSend("Focus first",()=>true,()=>{if(!fieldFocused)throw new InvalidOperationException("No text until focus");return unfocusedDraft;},()=>fieldFocused=true,value=>unfocusedDraft=value,()=>{},()=>focusFirstSends++);
    if(focusFirstSends!=1||unfocusedDraft!="Focus first")throw new Exception("Unselected field must be focused before reading or writing");

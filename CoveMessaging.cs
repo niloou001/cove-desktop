@@ -117,10 +117,10 @@ namespace CoveApp {
   public static HashSet<string> MessageEvidence(AutomationElement root,AutomationElement editor,string text,string platform="Discord"){
    var keys=new HashSet<string>(StringComparer.Ordinal);
    foreach(AutomationElement item in root.FindAll(TreeScope.Descendants,new OrCondition(new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Text),new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Group),new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Document)))){
-    if(item.Current.IsOffscreen||Contains(editor,item))continue;
+    if(item.Current.IsOffscreen)continue;
     bool content=item.Current.Name==text;object pattern;
     if(!content&&Regex.IsMatch(item.Current.AutomationId??"",@"^message-content[-_]\d",RegexOptions.IgnoreCase)&&item.TryGetCurrentPattern(TextPattern.Pattern,out pattern))content=((TextPattern)pattern).DocumentRange.GetText(text.Length+8).Trim('\r','\n')==text;
-    if(!content)continue;
+    if(!content||Contains(editor,item))continue;
     string key=null;bool messageArea=false;var current=item;
     for(int n=0;n<10&&current!=null&&!Automation.Compare(current,root);n++,current=TreeWalker.ControlViewWalker.GetParent(current)){
      string id=current.Current.AutomationId??"",name=current.Current.Name??"";
@@ -132,6 +132,11 @@ namespace CoveApp {
    }return keys;
   }
   public static bool NewMessageAppeared(HashSet<string> before,HashSet<string> after){foreach(string key in after)if(!before.Contains(key))return true;return false;}
+  public static T ReadFreshControl<T>(Func<AutomationElement> locate,Func<AutomationElement,T> read,Action check) where T:class {
+   // Chromium replaces accessibility nodes after focus/layout changes. Every
+   // retry must locate a new node, rather than read the invalid one again.
+   return AwaitControl(()=>{var current=locate();return current==null?null:read(current);},check);
+  }
   static void Check(CancellationToken token){token.ThrowIfCancellationRequested();Computer.CheckMouseCancel(token);Computer.RequireTargetForeground();}
   public static T AwaitControl<T>(Func<T> read,Action check,int timeoutMilliseconds=12000) where T:class {
    if(timeoutMilliseconds<1)throw new ArgumentOutOfRangeException();
@@ -162,6 +167,8 @@ namespace CoveApp {
    check();send();
   }
   public static string SendChecked(AutomationElement root,string recipient,string text,string platform,CancellationToken token,Func<AutomationElement,bool> verifyRecipient,Func<AutomationElement,bool> invoke){
+   var recipientProbe=verifyRecipient;
+   verifyRecipient=current=>AwaitControl(()=>new bool[]{recipientProbe(current)},()=>Check(token))[0];
    text=ValidateMessage(text);Check(token);if(!verifyRecipient(root))throw new Exception("Nao confirmei a conversa privada de "+recipient+". Nada foi enviado.");
    int windowHandle=root.Current.NativeWindowHandle;
    Action refresh=()=>{Check(token);if(windowHandle!=0)root=AutomationElement.FromHandle(new IntPtr(windowHandle));if(!verifyRecipient(root))throw new Exception("A conversa mudou. Nada foi enviado.");};
@@ -186,7 +193,13 @@ namespace CoveApp {
    },()=>{Check(token);if(windowHandle!=0)root=AutomationElement.FromHandle(new IntPtr(windowHandle));if(!verifyRecipient(root))throw new OperationCanceledException("A conversa mudou. Nao pressionei Enviar.");},5,800);};
    focusEditor();
    if(platform=="WhatsApp Web")WebProgress("message-field-focused");
-   var before=AwaitControl(()=>MessageEvidence(root,editor,text,platform),refresh);
+   Func<AutomationElement> locateEditor=()=>platform=="Discord"?FindDiscordComposer(root,recipient,true):platform=="WhatsApp Web"?WebComposer(root):editor;
+   if(platform=="WhatsApp Web")WebProgress("read-message-baseline");
+   var before=ReadFreshControl(locateEditor,fresh=>{
+    editor=fresh;var scope=platform=="WhatsApp Web"?WebDocument(root):root;
+    return scope==null?null:MessageEvidence(scope,fresh,text,platform);
+   },refresh);
+   if(platform=="WhatsApp Web")WebProgress("message-baseline-ready");
    Func<string> readEditor=()=>AwaitControl(()=>{
     var fresh=platform=="Discord"?FindDiscordComposer(root,recipient,true):platform=="WhatsApp Web"?WebComposer(root):editor;
     if(fresh==null)return null;editor=fresh;return Text(editor);
@@ -219,7 +232,8 @@ namespace CoveApp {
      if(!verifyRecipient(root))continue;
      var fresh=platform=="Discord"?FindDiscordComposer(root,recipient,true):platform=="WhatsApp Web"?WebComposer(root):editor;
      if(fresh!=null&&String.IsNullOrWhiteSpace(Text(fresh))){
-      if(NewMessageAppeared(before,MessageEvidence(root,fresh,text,platform))){if(platform=="WhatsApp Web")WebProgress("send-verified");return "Mensagem enviada para "+recipient+" no "+platform+".";}
+      var scope=platform=="WhatsApp Web"?WebDocument(root):root;
+      if(scope!=null&&NewMessageAppeared(before,MessageEvidence(scope,fresh,text,platform))){if(platform=="WhatsApp Web")WebProgress("send-verified");return "Mensagem enviada para "+recipient+" no "+platform+".";}
      }
     }catch(ElementNotAvailableException){}catch(System.Runtime.InteropServices.COMException){}
    }

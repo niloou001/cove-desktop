@@ -33,6 +33,22 @@ namespace CoveTests {
       var root=AutomationElement.FromHandle(handle);
       if(!(bool)browser.Invoke(null,new object[]{root})||editor.Invoke(null,new object[]{root})==null||!(bool)header.Invoke(null,new object[]{root,"Ester"}))throw new Exception("Verified browser/document/contact not located");
       if((bool)header.Invoke(null,new object[]{root,"Other"}))throw new Exception("Wrong contact accepted");
+      int freshLookups=0,baselineReads=0;AutomationElement retired=null;
+      string freshRead=CoveApp.Messaging.ReadFreshControl(()=>{
+       freshLookups++;return (AutomationElement)editor.Invoke(null,new object[]{root});
+      },field=>{
+       baselineReads++;
+       if(baselineReads==1){
+        retired=field;
+        window.Dispatcher.Invoke(new Action(()=>{
+         page.Children.Remove(composer);composer=new TextBox();AutomationProperties.SetName(composer,"Digite uma mensagem");page.Children.Add(composer);window.UpdateLayout();
+        }));
+        throw new ElementNotAvailableException();
+       }
+       if(Automation.Compare(retired,field))throw new Exception("Retried the retired composer");
+       return "fresh composer";
+      },()=>{});
+      if(freshRead!="fresh composer"||freshLookups!=2||baselineReads!=2)throw new Exception("Replaced composer was not reacquired before baseline read");
       // Exercise the production wait loop with simulated UI delays; callbacks
       // only count attempts and never click or send to a real application.
       var waitClock=System.Diagnostics.Stopwatch.StartNew();int opens=0;

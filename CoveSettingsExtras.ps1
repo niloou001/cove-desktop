@@ -5,19 +5,33 @@ $accentPresets=@(
  [pscustomobject]@{Name='Dourado';Hex='#E9BD6A'},[pscustomobject]@{Name='Coral';Hex='#F58C7A'}
 )
 $accentList=$dialog.FindName('AccentList');$accentHex=$dialog.FindName('AccentHex');$accentPreview=$dialog.FindName('AccentPreview');$accentStatus=$dialog.FindName('AccentStatus')
-$accentHex.Text=$script:appearance.Hex;$accentList.ItemsSource=@($accentPresets|ForEach-Object{$_.Name})
+$accentHex.Text=$script:appearance.Hex;$accentList.ItemsSource=@($accentPresets|ForEach-Object{$_.Name})+@('Personalizada')
 $accentList.SelectedItem=($accentPresets|Where-Object{$_.Hex -eq $script:appearance.Hex}|Select-Object -First 1).Name
+if(-not $accentList.SelectedItem){$accentList.SelectedItem='Personalizada'}
 $accentPreview.Background=$script:appearance.Hex
+foreach($preset in $accentPresets){
+ $swatch=New-Object Windows.Controls.Button;$swatch.Width=36;$swatch.Height=36;$swatch.Padding='0';$swatch.Margin='0,0,9,0'
+ $swatch.Background=$preset.Hex;$swatch.BorderBrush='#70FFFFFF';$swatch.BorderThickness=if($preset.Hex -eq $script:appearance.Hex){'3'}else{'1'};$swatch.ToolTip=$preset.Name;$swatch.Tag=$preset
+ [Windows.Automation.AutomationProperties]::SetName($swatch,('Cor '+$preset.Name))
+ $swatch.Add_Click({param($sender,$eventArgs) $accentList.SelectedItem=$sender.Tag.Name;$accentHex.Text=$sender.Tag.Hex})
+ $dialog.FindName('AccentSwatches').Children.Add($swatch)|Out-Null
+}
 $accentList.Add_SelectionChanged({$preset=$accentPresets|Where-Object{$_.Name -eq $accentList.SelectedItem}|Select-Object -First 1;if($preset){$accentHex.Text=$preset.Hex}})
-$accentHex.Add_TextChanged({if($accentHex.Text -match '^#[0-9a-fA-F]{6}$'){$accentPreview.Background=$accentHex.Text;$accentStatus.Text=''}else{$accentStatus.Text='Use #RRGGBB ou escolha uma cor.'}})
+$accentHex.Add_TextChanged({
+ $valid=$accentHex.Text -match '^#[0-9a-fA-F]{6}$';$dialog.FindName('ApplyAccent').IsEnabled=$valid
+ if($valid){$accentPreview.Background=$accentHex.Text;$accentStatus.Text='Previa da cor. Clique em Aplicar cor para salvar.';$matching=$accentPresets|Where-Object{$_.Hex -eq $accentHex.Text}|Select-Object -First 1;$accentList.SelectedItem=if($matching){$matching.Name}else{'Personalizada'}}else{$accentStatus.Text='Use #RRGGBB ou escolha uma cor.'}
+ foreach($swatch in $dialog.FindName('AccentSwatches').Children){$swatch.BorderThickness=if($swatch.Tag.Hex -eq $accentHex.Text){'3'}else{'1'}}
+})
 $dialog.FindName('ChooseAccent').Add_Click({
  Add-Type -AssemblyName System.Windows.Forms,System.Drawing
  $picker=New-Object Windows.Forms.ColorDialog
+ $pickerOwner=New-Object Windows.Forms.NativeWindow
  try{
+  $pickerOwner.AssignHandle((New-Object Windows.Interop.WindowInteropHelper($dialog)).Handle)
   $picker.FullOpen=$true
   if($accentHex.Text -match '^#[0-9a-fA-F]{6}$'){$picker.Color=[Drawing.ColorTranslator]::FromHtml($accentHex.Text)}
-  if($picker.ShowDialog() -eq [Windows.Forms.DialogResult]::OK){$accentHex.Text='#{0:X2}{1:X2}{2:X2}' -f $picker.Color.R,$picker.Color.G,$picker.Color.B}
- }finally{$picker.Dispose()}
+  if($picker.ShowDialog($pickerOwner) -eq [Windows.Forms.DialogResult]::OK){$accentHex.Text='#{0:X2}{1:X2}{2:X2}' -f $picker.Color.R,$picker.Color.G,$picker.Color.B}
+ }finally{$picker.Dispose();$pickerOwner.ReleaseHandle()}
 })
 $dialog.FindName('ApplyAccent').Add_Click({
  try{

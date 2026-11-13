@@ -1,5 +1,6 @@
 ﻿function Get-CoveBuildId([string]$Root){
  $files=@('Cove-Voice.ps1','CoveRuntime.ps1','CoveInstance.ps1','CoveCore.cs','CoveASR.cs','CoveChatGPT.cs','CoveVoice.cs','CoveNeural.cs','CoveComputer.cs','CoveDiscord.cs','CoveApps.ps1','CoveGames.ps1','CoveMessages.ps1','CoveMessagePlanner.ps1','CoveMessaging.cs','CoveConversation.ps1','CoveDrafts.ps1','CoveOnline.ps1','CoveOnline.cs','CoveFiles.ps1','CoveControl.ps1','CoveDiscord.ps1','CoveDiscordLinks.ps1','CoveAppearance.ps1','CoveIdentity.ps1','CoveSettingsExtras.ps1','CoveAppPanel.ps1','Cove-Orb.xaml','Cove-Theme.xaml','cove_asr.py','cove_neural.py')
+ $files+=@('CoveLauncher.ps1','CoveRuntimeWindows.cs','CoveShortcuts.ps1')
  $stream=New-Object IO.MemoryStream;$hash=[Security.Cryptography.SHA256]::Create()
  try{
   foreach($name in $files){$bytes=[Text.Encoding]::UTF8.GetBytes($name+"`n");$stream.Write($bytes,0,$bytes.Length);$bytes=[IO.File]::ReadAllBytes((Join-Path $Root $name));$stream.Write($bytes,0,$bytes.Length)}
@@ -20,9 +21,9 @@ function Test-CoveInstanceRunning([string]$Root){
   return -not $owned
  }finally{if($mutex){if($owned){$mutex.ReleaseMutex()};$mutex.Dispose()}}
 }
-function Save-CoveReloadState([string]$Root,[string]$Transcript,[object[]]$History=@()){
+function Save-CoveReloadState([string]$Root,[string]$Transcript,[object[]]$History=@(),$MessageSession=$null){
  Add-Type -AssemblyName System.Security
- $raw=[Text.Encoding]::UTF8.GetBytes((@{Root=$Root;Transcript=$Transcript;History=@($History)}|ConvertTo-Json -Depth 10 -Compress))
+ $raw=[Text.Encoding]::UTF8.GetBytes((@{Root=$Root;Transcript=$Transcript;History=@($History);MessageSession=$MessageSession}|ConvertTo-Json -Depth 10 -Compress))
  try{[IO.File]::WriteAllBytes((Join-Path $Root '.cove-reload-session.dat'),[Security.Cryptography.ProtectedData]::Protect($raw,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser))}finally{[Array]::Clear($raw,0,$raw.Length)}
 }
 function Read-CoveReloadState([string]$Root){

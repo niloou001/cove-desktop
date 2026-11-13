@@ -1,92 +1,105 @@
 <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="Button">
- <Grid RenderTransformOrigin="0.5,0.5" Background="Transparent">
+ <Grid Background="Transparent" RenderTransformOrigin="0.5,0.5">
   <Grid.RenderTransform><ScaleTransform x:Name="HoverScale"/></Grid.RenderTransform>
-  <Ellipse x:Name="Echo" Margin="6" Stroke="#749CE9EB" StrokeThickness="1" Opacity="0" RenderTransformOrigin="0.5,0.5">
+  <!-- A crisp glass lens, with movement carried by light rather than the body. -->
+  <Ellipse x:Name="Echo" Margin="4" Opacity="0" StrokeThickness="1" RenderTransformOrigin="0.5,0.5">
+   <Ellipse.Stroke><SolidColorBrush Color="{DynamicResource CovePrimary}"/></Ellipse.Stroke>
    <Ellipse.RenderTransform><ScaleTransform x:Name="EchoScale"/></Ellipse.RenderTransform>
   </Ellipse>
-  <Grid Margin="7" RenderTransformOrigin="0.5,0.5">
+  <Grid Margin="8" RenderTransformOrigin="0.5,0.5">
    <Grid.RenderTransform><ScaleTransform x:Name="Breath"/></Grid.RenderTransform>
-   <Ellipse Fill="#101A35"/>
-   <Ellipse Opacity="0.8" Fill="{TemplateBinding Background}"/>
-   <Grid Width="94" Height="94" IsHitTestVisible="False">
-    <Grid.Clip><EllipseGeometry Center="47,47" RadiusX="46" RadiusY="46"/></Grid.Clip>
-    <Grid x:Name="Liquid" RenderTransformOrigin="0.5,0.5">
-     <Grid.RenderTransform><RotateTransform x:Name="LiquidTurn"/></Grid.RenderTransform>
-     <Ellipse Width="126" Height="104" Margin="-34,-22,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
-      <Ellipse.Fill><RadialGradientBrush GradientOrigin="0.45,0.45"><GradientStop Color="{DynamicResource CovePrimaryCloud}"/><GradientStop Color="{DynamicResource CovePrimaryMist}" Offset="0.5"/><GradientStop Color="{DynamicResource CovePrimaryClear}" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
-     </Ellipse>
-     <Ellipse Width="110" Height="120" Margin="0,12,-30,-24" HorizontalAlignment="Right" VerticalAlignment="Bottom">
-      <Ellipse.Fill><RadialGradientBrush><GradientStop Color="{DynamicResource CoveSecondaryCloud}"/><GradientStop Color="{DynamicResource CoveSecondaryMist}" Offset="0.48"/><GradientStop Color="{DynamicResource CoveSecondaryClear}" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
-     </Ellipse>
-     <Ellipse x:Name="Pearl" Width="64" Height="72" Margin="8,3,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="0.5,0.5">
-      <Ellipse.RenderTransform><TranslateTransform x:Name="Drift"/></Ellipse.RenderTransform>
-      <Ellipse.Fill><RadialGradientBrush><GradientStop Color="{DynamicResource CoveLightCloud}"/><GradientStop Color="{DynamicResource CovePrimaryMist}" Offset="0.42"/><GradientStop Color="{DynamicResource CovePrimaryClear}" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
-     </Ellipse>
-    </Grid>
-    <Ellipse x:Name="VoiceLight" Opacity="0" Margin="12">
-     <Ellipse.Fill><RadialGradientBrush><GradientStop Color="{DynamicResource CoveLightCloud}"/><GradientStop Color="{DynamicResource CovePrimaryMist}" Offset="0.4"/><GradientStop Color="{DynamicResource CovePrimaryClear}" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
-    </Ellipse>
-    <Ellipse>
-     <Ellipse.Fill><RadialGradientBrush Center="0.43,0.37" GradientOrigin="0.35,0.26" RadiusX="0.68" RadiusY="0.68"><GradientStop Color="#00FFFFFF" Offset="0.25"/><GradientStop Color="#08081732" Offset="0.6"/><GradientStop Color="#AF080F29" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
-    </Ellipse>
-    <Ellipse Width="64" Height="44" Margin="7,1,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Opacity="0.5">
-     <Ellipse.Fill><RadialGradientBrush><GradientStop Color="{DynamicResource CoveLightCloud}"/><GradientStop Color="{DynamicResource CovePrimaryClear}" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
-    </Ellipse>
-   </Grid>
-   <Grid Width="38" Height="38" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
-    <Ellipse Fill="#180C1730"/>
-    <Path Data="M 27,10 A 12,12 0 1 0 27,28" Stroke="#F2EEFFF9" StrokeThickness="3.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center">
-     <Path.Effect><DropShadowEffect Color="{DynamicResource CovePrimary}" BlurRadius="7" ShadowDepth="0" Opacity="0.45"/></Path.Effect>
-    </Path>
-    <Ellipse Width="4" Height="4" Fill="#E6FFF7" HorizontalAlignment="Right" Margin="0,0,5,0" VerticalAlignment="Center"/>
-   </Grid>
-   <Ellipse StrokeThickness="0.8" Margin="0.5">
-    <Ellipse.Stroke><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="{DynamicResource CoveRim}"/><GradientStop Color="{DynamicResource CovePrimaryMist}" Offset="0.5"/><GradientStop Color="{DynamicResource CoveSecondaryMist}" Offset="1"/></LinearGradientBrush></Ellipse.Stroke>
+   <Ellipse>
+    <Ellipse.Fill><RadialGradientBrush Center="0.42,0.32" GradientOrigin="0.34,0.18" RadiusX="0.8" RadiusY="0.8"><GradientStop Color="#213B4A"/><GradientStop Color="#0C1928" Offset="0.48"/><GradientStop Color="#03080F" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
    </Ellipse>
+   <Ellipse Margin="1" Opacity="0.18" Fill="{TemplateBinding Background}"/>
+   <Grid x:Name="Liquid" Margin="2" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+    <Grid.Clip><EllipseGeometry Center="44,44" RadiusX="44" RadiusY="44"/></Grid.Clip>
+    <Grid.RenderTransform><RotateTransform x:Name="LiquidTurn"/></Grid.RenderTransform>
+    <Ellipse Width="70" Height="70" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-12,-20,0,0" Opacity="0.8">
+     <Ellipse.Fill><RadialGradientBrush><GradientStop Color="{DynamicResource CovePrimaryCloud}"/><GradientStop Color="{DynamicResource CovePrimaryMist}" Offset="0.38"/><GradientStop Color="{DynamicResource CovePrimaryClear}" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
+    </Ellipse>
+    <Ellipse Width="64" Height="64" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-12,-17" Opacity="0.65">
+     <Ellipse.Fill><RadialGradientBrush><GradientStop Color="{DynamicResource CoveSecondaryCloud}"/><GradientStop Color="{DynamicResource CoveSecondaryMist}" Offset="0.32"/><GradientStop Color="{DynamicResource CoveSecondaryClear}" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
+    </Ellipse>
+   </Grid>
+   <Ellipse Margin="8" Stroke="#2037DDE7" StrokeThickness="0.6"/>
+   <Ellipse Margin="17" Stroke="#12FFFFFF" StrokeThickness="0.6"/>
+   <Ellipse x:Name="VoiceLight" Margin="16" Opacity="0.16">
+    <Ellipse.Fill><RadialGradientBrush><GradientStop Color="{DynamicResource CovePrimaryMist}"/><GradientStop Color="{DynamicResource CovePrimaryClear}" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
+   </Ellipse>
+   <!-- Narrow, specular reflection keeps the surface clear instead of misty. -->
+   <Path Data="M 17,27 C 26,9 52,6 70,17" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.55">
+    <Path.Stroke><LinearGradientBrush><GradientStop Color="#00FFFFFF"/><GradientStop Color="#D8E9FFFF" Offset="0.4"/><GradientStop Color="#00FFFFFF" Offset="1"/></LinearGradientBrush></Path.Stroke>
+   </Path>
+   <Ellipse Margin="0.5" StrokeThickness="1">
+    <Ellipse.Stroke><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#CAF0FFFF"/><GradientStop Color="{DynamicResource CovePrimaryMist}" Offset="0.38"/><GradientStop Color="#2448728A" Offset="0.7"/><GradientStop Color="{DynamicResource CoveRim}" Offset="1"/></LinearGradientBrush></Ellipse.Stroke>
+   </Ellipse>
+   <!-- No lettermark: a compact voice signal becomes the identity. -->
+   <Grid x:Name="Signal" Width="30" Height="30" IsHitTestVisible="False">
+    <Grid.Effect><DropShadowEffect Color="{DynamicResource CovePrimary}" BlurRadius="9" ShadowDepth="0" Opacity="0.75"/></Grid.Effect>
+    <Rectangle x:Name="BarLeft" Width="3" Height="10" RadiusX="1.5" RadiusY="1.5" Fill="#DDCFFBFF" HorizontalAlignment="Left" Margin="5,0,0,0" RenderTransformOrigin="0.5,0.5"><Rectangle.RenderTransform><ScaleTransform x:Name="SignalLeft"/></Rectangle.RenderTransform></Rectangle>
+    <Rectangle x:Name="BarCenter" Width="3" Height="23" RadiusX="1.5" RadiusY="1.5" Fill="#F4F7FFFF" RenderTransformOrigin="0.5,0.5"><Rectangle.RenderTransform><ScaleTransform x:Name="SignalCenter"/></Rectangle.RenderTransform></Rectangle>
+    <Rectangle x:Name="BarRight" Width="3" Height="15" RadiusX="1.5" RadiusY="1.5" Fill="#DDCFFBFF" HorizontalAlignment="Right" Margin="0,0,5,0" RenderTransformOrigin="0.5,0.5"><Rectangle.RenderTransform><ScaleTransform x:Name="SignalRight"/></Rectangle.RenderTransform></Rectangle>
+   </Grid>
+  </Grid>
+  <Grid x:Name="Orbit" Margin="3" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+   <Grid.RenderTransform><RotateTransform x:Name="OrbitTurn"/></Grid.RenderTransform>
+   <Ellipse StrokeThickness="1.4" StrokeDashArray="18 116" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+    <Ellipse.Stroke><SolidColorBrush Color="{DynamicResource CoveLight}"/></Ellipse.Stroke>
+   </Ellipse>
+   <Ellipse Width="3" Height="3" Fill="#E2F6FFFF" VerticalAlignment="Top" Margin="0,-1,0,0"/>
   </Grid>
  </Grid>
  <ControlTemplate.Triggers>
   <EventTrigger RoutedEvent="FrameworkElement.Loaded"><BeginStoryboard><Storyboard>
-   <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleX" From="0.96" To="1" Duration="0:0:3" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
-   <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleY" From="0.96" To="1" Duration="0:0:3" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
-   <DoubleAnimation Storyboard.TargetName="LiquidTurn" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:24" RepeatBehavior="Forever"/>
-   <DoubleAnimation Storyboard.TargetName="Drift" Storyboard.TargetProperty="X" From="-9" To="16" Duration="0:0:4.7" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
-   <DoubleAnimation Storyboard.TargetName="Drift" Storyboard.TargetProperty="Y" From="-3" To="19" Duration="0:0:6.1" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+   <DoubleAnimation Storyboard.TargetName="OrbitTurn" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:14" RepeatBehavior="Forever"/>
+   <DoubleAnimation Storyboard.TargetName="LiquidTurn" Storyboard.TargetProperty="Angle" From="0" To="-360" Duration="0:0:22" RepeatBehavior="Forever"/>
+   <DoubleAnimation Storyboard.TargetName="Signal" Storyboard.TargetProperty="Opacity" From="0.65" To="1" Duration="0:0:2.4" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
   </Storyboard></BeginStoryboard></EventTrigger>
   <Trigger Property="Tag" Value="Listening">
    <Trigger.EnterActions><BeginStoryboard x:Name="ListenPulse"><Storyboard>
-    <DoubleAnimation Storyboard.TargetName="EchoScale" Storyboard.TargetProperty="ScaleX" From="0.94" To="1.16" Duration="0:0:1.8" RepeatBehavior="Forever"/>
-    <DoubleAnimation Storyboard.TargetName="EchoScale" Storyboard.TargetProperty="ScaleY" From="0.94" To="1.16" Duration="0:0:1.8" RepeatBehavior="Forever"/>
-    <DoubleAnimation Storyboard.TargetName="Echo" Storyboard.TargetProperty="Opacity" From="0.65" To="0" Duration="0:0:1.8" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="EchoScale" Storyboard.TargetProperty="ScaleX" From="0.88" To="1.08" Duration="0:0:1.5" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="EchoScale" Storyboard.TargetProperty="ScaleY" From="0.88" To="1.08" Duration="0:0:1.5" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="Echo" Storyboard.TargetProperty="Opacity" From="0.8" To="0" Duration="0:0:1.5" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="SignalLeft" Storyboard.TargetProperty="ScaleY" From="0.7" To="1.6" Duration="0:0:0.55" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="SignalRight" Storyboard.TargetProperty="ScaleY" From="1.2" To="0.6" Duration="0:0:0.7" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="VoiceLight" Storyboard.TargetProperty="Opacity" To="0.65" Duration="0:0:0.3"/>
    </Storyboard></BeginStoryboard></Trigger.EnterActions>
    <Trigger.ExitActions><RemoveStoryboard BeginStoryboardName="ListenPulse"/></Trigger.ExitActions>
   </Trigger>
   <Trigger Property="Tag" Value="Thinking">
    <Trigger.EnterActions><BeginStoryboard x:Name="ThinkFlow" HandoffBehavior="Compose"><Storyboard>
-    <DoubleAnimation Storyboard.TargetName="LiquidTurn" Storyboard.TargetProperty="Angle" By="360" Duration="0:0:4" RepeatBehavior="Forever"/>
-    <DoubleAnimation Storyboard.TargetName="VoiceLight" Storyboard.TargetProperty="Opacity" From="0.05" To="0.35" Duration="0:0:1.3" AutoReverse="True" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="OrbitTurn" Storyboard.TargetProperty="Angle" By="360" Duration="0:0:1.8" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="VoiceLight" Storyboard.TargetProperty="Opacity" From="0.2" To="0.8" Duration="0:0:0.9" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
    </Storyboard></BeginStoryboard></Trigger.EnterActions>
    <Trigger.ExitActions><RemoveStoryboard BeginStoryboardName="ThinkFlow"/></Trigger.ExitActions>
   </Trigger>
   <Trigger Property="Tag" Value="Speaking">
-   <Trigger.EnterActions><BeginStoryboard x:Name="SpeakPulse" HandoffBehavior="Compose"><Storyboard>
-    <DoubleAnimation Storyboard.TargetName="VoiceLight" Storyboard.TargetProperty="Opacity" From="0.1" To="0.8" Duration="0:0:0.62" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
-    <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleX" From="0.96" To="1.035" Duration="0:0:0.62" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
-    <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleY" From="0.97" To="1.025" Duration="0:0:0.81" AutoReverse="True" RepeatBehavior="Forever"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+   <Trigger.EnterActions><BeginStoryboard x:Name="SpeakPulse"><Storyboard>
+    <DoubleAnimation Storyboard.TargetName="SignalLeft" Storyboard.TargetProperty="ScaleY" From="0.5" To="2" Duration="0:0:0.24" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="SignalCenter" Storyboard.TargetProperty="ScaleY" From="0.5" To="1.12" Duration="0:0:0.37" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="SignalRight" Storyboard.TargetProperty="ScaleY" From="1.7" To="0.4" Duration="0:0:0.29" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="VoiceLight" Storyboard.TargetProperty="Opacity" From="0.3" To="0.95" Duration="0:0:0.45" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleX" From="0.99" To="1.025" Duration="0:0:0.6" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
+    <DoubleAnimation Storyboard.TargetName="Breath" Storyboard.TargetProperty="ScaleY" From="0.99" To="1.025" Duration="0:0:0.6" AccelerationRatio="0.3" DecelerationRatio="0.3" AutoReverse="True" RepeatBehavior="Forever"/>
    </Storyboard></BeginStoryboard></Trigger.EnterActions>
    <Trigger.ExitActions><RemoveStoryboard BeginStoryboardName="SpeakPulse"/></Trigger.ExitActions>
   </Trigger>
-  <Trigger Property="Tag" Value="Paused"><Setter TargetName="Liquid" Property="Opacity" Value="0.28"/><Setter TargetName="Pearl" Property="Opacity" Value="0.2"/></Trigger>
+  <Trigger Property="Tag" Value="Paused">
+   <Setter TargetName="Liquid" Property="Opacity" Value="0.2"/><Setter TargetName="Orbit" Property="Opacity" Value="0.2"/>
+   <Trigger.EnterActions><BeginStoryboard x:Name="PauseDim" HandoffBehavior="Compose"><Storyboard><DoubleAnimation Storyboard.TargetName="Signal" Storyboard.TargetProperty="Opacity" To="0.35" Duration="0:0:0.2"/></Storyboard></BeginStoryboard></Trigger.EnterActions>
+   <Trigger.ExitActions><RemoveStoryboard BeginStoryboardName="PauseDim"/></Trigger.ExitActions>
+  </Trigger>
   <Trigger Property="IsMouseOver" Value="True">
    <Trigger.EnterActions><BeginStoryboard><Storyboard>
-    <DoubleAnimation Storyboard.TargetName="HoverScale" Storyboard.TargetProperty="ScaleX" To="1.045" Duration="0:0:0.2"/>
-    <DoubleAnimation Storyboard.TargetName="HoverScale" Storyboard.TargetProperty="ScaleY" To="1.045" Duration="0:0:0.2"/>
+    <DoubleAnimation Storyboard.TargetName="HoverScale" Storyboard.TargetProperty="ScaleX" To="1.045" Duration="0:0:0.18"/>
+    <DoubleAnimation Storyboard.TargetName="HoverScale" Storyboard.TargetProperty="ScaleY" To="1.045" Duration="0:0:0.18"/>
    </Storyboard></BeginStoryboard></Trigger.EnterActions>
    <Trigger.ExitActions><BeginStoryboard><Storyboard>
-    <DoubleAnimation Storyboard.TargetName="HoverScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.25"/>
-    <DoubleAnimation Storyboard.TargetName="HoverScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.25"/>
+    <DoubleAnimation Storyboard.TargetName="HoverScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.24"/>
+    <DoubleAnimation Storyboard.TargetName="HoverScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.24"/>
    </Storyboard></BeginStoryboard></Trigger.ExitActions>
   </Trigger>
-  <Trigger Property="IsPressed" Value="True"><Setter TargetName="Liquid" Property="Opacity" Value="0.6"/></Trigger>
+  <Trigger Property="IsPressed" Value="True"><Setter TargetName="Signal" Property="Opacity" Value="0.5"/></Trigger>
  </ControlTemplate.Triggers>
 </ControlTemplate>

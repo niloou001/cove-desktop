@@ -13,31 +13,42 @@ namespace CoveApp {
   readonly WindowsVoice windows=new WindowsVoice();
   readonly string root,assets;
   readonly object processLock=new object(),serial=new object();
-  Process child;SoundPlayer player;int generation;volatile bool stopping;
+  Process child;SoundPlayer player;int generation;volatile bool stopping,warming;
   public CoveSpeech(string folder){root=folder;assets=Path.Combine(root,@"assets\neural");}
   public static VoiceChoice[] Voices(){
    var result=new List<VoiceChoice>{
     new VoiceChoice{Id="kokoro:serena",Name="Serena - feminina calma",Gender="Female",Description="Voz feminina brasileira, suave, pausada e controlada."},
-    new VoiceChoice{Id="kokoro:atlas",Name="Atlas - assistente formal",Gender="Male",Description="Voz masculina brasileira, serena e formal, com ritmo de assistente pessoal."}
+    new VoiceChoice{Id="kokoro:atlas",Name="Atlas - assistente formal",Gender="Male",Description="Voz masculina brasileira, serena e formal, com ritmo de assistente pessoal."},
+    new VoiceChoice{Id="kokoro:luna",Name="Luna - leve e animada",Gender="Female",Description="Perfil sintetico feminino, leve e mais agil, pensado para uma sensacao jovem e descontraida."},
+    new VoiceChoice{Id="kokoro:lia",Name="Lia - suave e acolhedora",Gender="Female",Description="Perfil sintetico feminino, macio e acolhedor. Sugestao para conversas tranquilas."},
+    new VoiceChoice{Id="kokoro:caio",Name="Caio - claro e espontaneo",Gender="Male",Description="Perfil sintetico masculino, claro, direto e mais agil, com uma sensacao jovem."},
+    new VoiceChoice{Id="kokoro:noah",Name="Noah - calmo e leve",Gender="Male",Description="Perfil sintetico masculino, leve e equilibrado, com ritmo natural de conversa."}
    };
    foreach(var voice in WindowsVoice.Voices()){voice.Description="Voz sintetizada do Windows.";result.Add(voice);}return result.ToArray();
   }
   public bool Installed {get{return File.Exists(Path.Combine(assets,"ready.txt"))&&File.Exists(Path.Combine(assets,@"python\python.exe"))&&File.Exists(Path.Combine(assets,"kokoro-v1.0.onnx"))&&File.Exists(Path.Combine(assets,"voices-v1.0.bin"));}}
   static string Quote(string value){return "\""+value.Replace("\"","\\\"")+"\"";}
-  public Task<bool> WarmUp(){if(!Installed||stopping)return Task.FromResult(false);int current=generation;return Task.Run(()=>GenerateAndPlay(null,"serena",current));}
+  public Task<bool> WarmUp(){
+   if(!Installed||stopping)return Task.FromResult(false);
+   return Task.Run(()=>{lock(serial){
+    lock(processLock){if(stopping)return false;warming=true;}
+    try{return GenerateAndPlay(null,"serena",-1);}
+    finally{lock(processLock){warming=false;}}
+   }});
+  }
   public Task<bool> Speak(string text,string id){
    if(stopping)throw new ObjectDisposedException("CoveSpeech");
    Stop();
    if(!id.StartsWith("kokoro:",StringComparison.Ordinal))return windows.Speak(text,id);
    string preset=id.Substring(7);
-   if(preset!="serena"&&preset!="atlas")throw new ArgumentException("Perfil de voz desconhecido.");
+   if(Array.IndexOf(new[]{"serena","atlas","luna","lia","caio","noah"},preset)<0)throw new ArgumentException("Perfil de voz desconhecido.");
    int current=generation;
    return Task.Run(()=>GenerateAndPlay(text,preset,current));
   }
   bool GenerateAndPlay(string text,string preset,int current){
    lock(serial){
     CheckGeneration(current);
-    if(!Installed)throw new Exception("Prepare as novas vozes em Ajustes > Preparar Serena e Atlas. O download e feito uma unica vez.");
+    if(!Installed)throw new Exception("Prepare as vozes em Ajustes > Preparar vozes locais. O download e feito uma unica vez.");
     Process process;
     lock(processLock){
      CheckGeneration(current);
@@ -86,13 +97,13 @@ namespace CoveApp {
    if(bytes.Length<44||Encoding.ASCII.GetString(bytes,0,4)!="RIFF"||Encoding.ASCII.GetString(bytes,8,4)!="WAVE")throw new Exception("O audio gerado nao e um WAV valido.");
    return bytes;
   }
-  void CheckGeneration(int current){if(stopping||current!=generation)throw new OperationCanceledException("Fala interrompida.");}
+  void CheckGeneration(int current){if(stopping||(current!=-1&&current!=generation))throw new OperationCanceledException("Fala interrompida.");}
   void KillChild(){lock(processLock){if(child!=null){try{if(!child.HasExited)child.Kill();}catch{}try{child.Dispose();}catch{}child=null;}}}
   public void Stop(){
    Interlocked.Increment(ref generation);windows.Stop();
    lock(processLock){if(player!=null){try{player.Stop();}catch{}}}
    // Cancel an active synthesis, but retain an idle loaded model between replies.
-   if(!Monitor.TryEnter(serial)){KillChild();}else{Monitor.Exit(serial);}
+   lock(processLock){if(!warming){if(!Monitor.TryEnter(serial)){KillChild();}else{Monitor.Exit(serial);}}}
   }
   public void Dispose(){stopping=true;Stop();KillChild();windows.Dispose();}
  }

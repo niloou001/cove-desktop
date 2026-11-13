@@ -1,0 +1,2 @@
+@echo off
+powershell.exe -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0CoveLauncher.ps1" -Restart

@@ -17,6 +17,13 @@ $script:coveDiscordLinksFile=$linkFile;$script:pendingLinkTarget=$null
 function Click-Control([string]$Name){$dialog.FindName($Name).RaiseEvent((New-Object Windows.RoutedEventArgs([Windows.Controls.Button]::ClickEvent)))}
 try{
  . "$PSScriptRoot\CoveSettingsExtras.ps1"
+ if($dialog.FindName('AccentSwatches').Children.Count -ne 6){throw 'Color swatches missing'}
+ $swatch=$dialog.FindName('AccentSwatches').Children[1]
+ $swatch.RaiseEvent((New-Object Windows.RoutedEventArgs([Windows.Controls.Button]::ClickEvent)))
+ if($dialog.FindName('AccentHex').Text -cne '#5AA9EA' -or $dialog.FindName('AccentList').SelectedItem -cne 'Oceano'){throw 'Swatch did not select matching color'}
+ if($dialog.FindName('AccentList').DisplayMemberPath){throw 'String palette entries must not use a missing display property'}
+ $dialog.FindName('AccentHex').Text='#123456'
+ if($dialog.FindName('AccentList').SelectedItem -cne 'Personalizada'){throw 'Custom color left an empty palette label'}
  $dialog.FindName('AccentList').SelectedItem='Violeta'
  if($dialog.FindName('AccentHex').Text -cne '#A78BFA'){throw 'Preset event did not fill the color field'}
  Click-Control 'ApplyAccent'

@@ -1,5 +1,6 @@
 ﻿$ErrorActionPreference='Stop'
 . "$PSScriptRoot\CoveApps.ps1"
+. "$PSScriptRoot\CoveShortcuts.ps1"
 . "$PSScriptRoot\CoveDiscord.ps1"
 . "$PSScriptRoot\CoveMessages.ps1"
 . "$PSScriptRoot\CoveMessagePlanner.ps1"

@@ -1,43 +1,45 @@
-SERENA E ATLAS
+VOZES LOCAIS DO COVE
 
-Serena: perfil feminino brasileiro, com ritmo mais lento e tranquilo.
-Atlas: perfil masculino brasileiro, sereno e formal, no estilo de assistente.
-Sao perfis originais do Cove, sem clonagem das vozes de Makima ou Jarvis.
-Os timbres base sao pf_dora e pm_santa do modelo Kokoro.
-A semelhanca com as referencias e apenas de caracteristicas gerais;
-nao ha promessa de reproduzir interpretacao, timbre ou sotaque dos atores.
+Serena: feminina, calma e pausada.
+Atlas: masculina, serena e formal.
+Luna: feminina, leve e mais agil.
+Lia: feminina, suave e acolhedora; sugestao para conversar com calma.
+Caio: masculina, clara e espontanea.
+Noah: masculina, leve e equilibrada.
 
-COMO PREPARAR
-Feche o Cove pelo menu > Sair e abra Abrir-Cove.cmd novamente.
-Em Conversar > Ajustes, clique Preparar Serena e Atlas.
-O download inicial pode levar alguns minutos e usa algumas centenas de MB.
-Voce tambem pode abrir Preparar-Vozes.cmd para acompanhar a instalacao.
-Nenhum Python do sistema, PATH, administrador ou chave de audio e necessario.
-O ambiente Python e as dependencias ficam dentro de assets\neural.
-O instalador testa a geracao das duas vozes antes de marcar a instalacao pronta.
+Sao perfis sinteticos; os nomes nao identificam pessoas reais nem sua idade.
+Luna, Lia e Noah usam misturas de timbres; Caio usa uma base diferente de Atlas.
+O resultado pode variar com a frase. Use Ouvir esta voz antes de escolher.
 
-Depois, escolha Serena ou Atlas, clique Ouvir esta voz e, para salvar,
-clique Aplicar voz e microfone. A escolha continua disponivel nas proximas aberturas.
-No primeiro uso desta versao, Serena e a opcao inicial.
+COMO USAR
+Abra Ajustes > Voz, escolha um perfil e clique Ouvir esta voz.
+Para manter a escolha nas proximas aberturas, clique Aplicar voz e microfone.
+A atualizacao preserva a voz escolhida anteriormente.
 
-O mecanismo neural funciona localmente apos o download. Nao envia textos a
-outro servico de voz e nao usa creditos da API de audio. A conversa com IA
-continua usando a conexao ChatGPT ou a API escolhida anteriormente.
-O primeiro audio pode demorar mais, pois o modelo precisa carregar.
+Em instalacoes novas, use Preparar vozes locais ou Preparar-Vozes.cmd.
+O download inicial ocupa algumas centenas de MB. O mecanismo de voz funciona
+localmente depois da instalacao, sem enviar o texto a um servico de audio.
+Instalacoes que ja possuem o pacote Kokoro completo nao precisam baixa-lo de novo.
+As vozes do Windows continuam disponiveis como alternativas.
 
-Se a preparacao falhar, abra Preparar-Vozes.cmd para ver o erro. Arquivos
-completos sao reaproveitados. As vozes do Windows continuam como alternativas.
-As amostras de teste ficam em assets\neural\serena-amostra.wav e atlas-amostra.wav.
-Audios de conversas reais sao transmitidos entre processos em memoria;
-nao sao salvos pelo mecanismo de voz.
+O instalador gera uma amostra de cada perfil antes de concluir.
+As amostras ficam em assets\neural\NOME-amostra.wav.
+As falas de conversas reais passam por memoria e nao sao salvas pelo mecanismo.
 
-VALIDACAO
-Codigo C# e interface verificados no ambiente isolado do Codex.
-O download e o teste real do modelo precisam rodar na sua sessao do Windows:
-a conexao HTTPS de downloads esta indisponivel no ambiente isolado.
-Nao foi possivel audicionar as novas vozes aqui antes da instalacao.
-
-FONTES E LICENCAS
+BASES E LICENCAS
+Serena: pf_dora, velocidade 0.90.
+Atlas: pm_santa, velocidade 0.96.
+Luna: 72% pf_dora + 28% af_sky, velocidade 1.04.
+Lia: 70% pf_dora + 30% af_heart, velocidade 0.98.
+Caio: pm_alex, velocidade 1.04.
+Noah: 78% pm_alex + 22% pm_santa, velocidade 1.00.
+Todos usam fonetizacao pt-br. Misturas podem ter diferencas de sotaque.
 Kokoro-82M: Apache-2.0, https://huggingface.co/hexgrad/Kokoro-82M
 kokoro-onnx: MIT, https://github.com/thewh1teagle/kokoro-onnx
+Mistura de timbres: https://github.com/thewh1teagle/kokoro-onnx/blob/main/examples/with_blending.py
 Python e dependencias conservam suas licencas incluidas na distribuicao.
+
+VALIDACAO DESTA ALTERACAO
+Geracao real dos seis arquivos WAV confirmada com o modelo instalado.
+Interface, catalogo, cores, persistencia e transporte WAV verificados.
+A avaliacao subjetiva do timbre deve ser feita ouvindo as amostras.

@@ -1,5 +1,6 @@
 ﻿function Invoke-CoveFileRequest([string]$text,[switch]$DryRun){
- $result=[pscustomobject]@{Handled=$false;Message='';NeedsConfirmation=$false;AppName=''}
+ $result=[pscustomobject]@{Handled=$false;Message='';NeedsConfirmation=$false;AppName='';LocalOnly=$true}
+ $text=ConvertTo-CoveRequestLanguage $text
  $normalized=ConvertTo-CoveAppName $text
  if($normalized -match '^(quais discos|liste os discos|listar discos|mostrar discos|meu computador|este computador)$'){
   $result.Handled=$true

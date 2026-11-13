@@ -15,11 +15,13 @@ using System.Web.Script.Serialization;
 namespace CoveApp {
  // Official Sign in with ChatGPT public-client flow. No browser cookies or
  // credentials belonging to Codex or any other app are read.
- public sealed class ChatGPTAccount {
+ public sealed class ChatGPTAccount : IDisposable {
   const string Resource="https://api.openai.com/v1";
   const string TokenEndpoint="https://auth.openai.com/api/accounts/oauth/token";
   readonly string directory,hostId;
   readonly SemaphoreSlim gate=new SemaphoreSlim(1,1);
+  readonly HttpClient responseClient=Client();
+  public void Dispose(){responseClient.Dispose();}
   Dictionary<string,object> profile;
   string cachedModel="";DateTime modelUntil=DateTime.MinValue;
   public readonly System.Collections.Concurrent.ConcurrentQueue<string> TextDeltas=new System.Collections.Concurrent.ConcurrentQueue<string>();
@@ -212,7 +214,7 @@ namespace CoveApp {
    await gate.WaitAsync(token).ConfigureAwait(false);
    try {
     string access=await AccessToken(token).ConfigureAwait(false);
-    using(var http=Client()) {
+    {var http=responseClient;
      http.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",access);
      string chosen=cachedModel;
      if(chosen.Length==0||DateTime.UtcNow>=modelUntil){

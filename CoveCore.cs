@@ -175,13 +175,13 @@ namespace CoveApp {
   }
  }
  public static class Brain {
+  static readonly HttpClient client=new HttpClient{Timeout=TimeSpan.FromSeconds(45)};
   public static async Task<string> Ask(string key,string body,CancellationToken token) {
    ServicePointManager.SecurityProtocol=SecurityProtocolType.Tls12;
-   using(var client=new HttpClient()) {
-    client.Timeout=TimeSpan.FromSeconds(45);
-    client.DefaultRequestHeaders.Authorization=new AuthenticationHeaderValue("Bearer",key);
-    using(var content=new StringContent(body,Encoding.UTF8,"application/json"))
-    using(var response=await client.PostAsync("https://api.openai.com/v1/responses",content,token).ConfigureAwait(false)) {
+   using(var request=new HttpRequestMessage(HttpMethod.Post,"https://api.openai.com/v1/responses")) {
+    request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",key);
+    request.Content=new StringContent(body,Encoding.UTF8,"application/json");
+    using(var response=await client.SendAsync(request,token).ConfigureAwait(false)) {
      string json=await response.Content.ReadAsStringAsync().ConfigureAwait(false);
      if(!response.IsSuccessStatusCode) {
       int code=(int)response.StatusCode;

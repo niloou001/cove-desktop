@@ -18,6 +18,10 @@ import wave
 PRESETS = {
     "serena": {"voice": "pf_dora", "speed": 0.90},
     "atlas": {"voice": "pm_santa", "speed": 0.96},
+    "luna": {"blend": {"pf_dora": 0.72, "af_sky": 0.28}, "speed": 1.04},
+    "lia": {"blend": {"pf_dora": 0.70, "af_heart": 0.30}, "speed": 0.98},
+    "caio": {"voice": "pm_alex", "speed": 1.04},
+    "noah": {"blend": {"pm_alex": 0.78, "pm_santa": 0.22}, "speed": 1.0},
 }
 
 
@@ -48,8 +52,12 @@ def synthesize(engine, text, preset):
     if not isinstance(text, str) or not text.strip() or len(text) > 12000:
         raise ValueError("Invalid text length")
     options = PRESETS[preset]
+    voice = options.get("voice")
+    if "blend" in options:
+        voice = sum(engine.get_voice_style(name) * weight
+                    for name, weight in options["blend"].items())
     samples, rate = engine.create(
-        text.strip(), voice=options["voice"], speed=options["speed"], lang="pt-br"
+        text.strip(), voice=voice, speed=options["speed"], lang="pt-br"
     )
     samples = np.asarray(samples, dtype=np.float32).reshape(-1)
     if not samples.size or not np.isfinite(samples).all():
@@ -97,7 +105,9 @@ def main():
             str(args.assets / "kokoro-v1.0.onnx"),
             str(args.assets / "voices-v1.0.bin"),
         )
-        missing = {p["voice"] for p in PRESETS.values()} - set(engine.get_voices())
+        required = {name for p in PRESETS.values()
+                    for name in (p["blend"] if "blend" in p else [p["voice"]])}
+        missing = required - set(engine.get_voices())
         if missing:
             raise RuntimeError("The downloaded voice pack is incomplete")
 
@@ -105,6 +115,10 @@ def main():
         phrases = {
             "serena": "Oi. Estou aqui com voce. Podemos conversar com calma, no seu tempo.",
             "atlas": "Ola. Estou a disposicao. Diga o que precisa e vamos organizar os proximos passos.",
+            "luna": "Oi! Eu sou a Luna. Vamos conversar? Me conta o que voce tem em mente hoje.",
+            "lia": "Oi, eu sou a Lia. Estou aqui com voce. Vamos fazer as coisas com calma, do seu jeito.",
+            "caio": "Opa, eu sou o Caio. Pode falar! Vamos resolver isso juntos, sem complicar.",
+            "noah": "Oi, eu sou o Noah. Pode contar comigo. Vamos pensar no proximo passo juntos.",
         }
         for preset, text in phrases.items():
             with contextlib.redirect_stdout(sys.stderr):
@@ -118,6 +132,10 @@ def main():
         try:
             request = json.loads(line)
             if request.get("warmup"):
+                # Load phonemization and execute the first inference before a reply
+                # needs audio. This stays silent and never emits an audio packet.
+                with contextlib.redirect_stdout(sys.stderr):
+                    cached_synthesize(engine, "Oi.", "serena")
                 result = {"ready": True}
             elif request.get("stream"):
                 for chunk in speech_chunks(request.get("text")):

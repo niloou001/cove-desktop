@@ -12,7 +12,7 @@ namespace CoveApp {
 $script:discordCancel=New-Object Threading.CancellationTokenSource
 function Get-CoveChromePath {return 'C:\fixture\chrome.exe'}
 try{
- foreach($phrase in @('mande mensagem para Ester no WhatsApp Web dizendo Ate logo!','mande mensagem no WhatsApp Web para Ester: Ate logo!','envie mensagem para Ester no whatssap web falando Ate logo!')){
+ foreach($phrase in @('mande mensagem para Ester no WhatsApp Web dizendo Ate logo!','mande mensagem no WhatsApp Web para Ester: Ate logo!','envie mensagem para Ester no whatssap web falando Ate logo!','entra no WhatsApp Web e manda mensagem para Ester dizendo Ate logo!','abra o WhatsApp Web e envie uma mensagem para Ester: Ate logo!','vai no whatssap web e manda para Ester falando Ate logo!')){
   $web=Invoke-CoveMessageRequest $phrase -DryRun
   if($web.Platform -cne 'WhatsApp Web' -or $web.Recipient -cne 'Ester' -or $web.Body -cne 'Ate logo!' -or $web.Task){throw "Web parsing: $phrase -> $($web|ConvertTo-Json -Compress)"}
  }
@@ -60,5 +60,37 @@ try{
  if($r.Action -or $r.Task -or $script:messageDialog){throw 'Cancelled message remains active'}
  $web=Invoke-CoveMessageRequest 'mande mensagem para Ester no WhatsApp Web dizendo Ate logo!'
  if($web.Task.GetAwaiter().GetResult() -cne 'stub-web' -or [CoveApp.Messaging]::WebSends -ne 1 -or [CoveApp.Messaging]::Body -cne 'Ate logo!'){throw 'Web request did not select web controller'}
- 'OK: natural messages, recipient/platform/body, literal quotes, one-question followup, cancellation, negative requests, no real sends.'
+ $script:messageDialog=$null;$script:messageContext=$null
+ foreach($phrase in @('mande mensagem para Ester no WhatsApp e eb do Chrome dizendo Oi!','mande mensagem para um contato chamado Ester no WhatsApp pelo Chrome dizendo Oi!','mande mensagem para Ester no WhatsApp Web dizendo Oi!')){
+  $r=Invoke-CoveMessageRequest $phrase -DryRun
+  if($r.Platform -cne 'WhatsApp Web' -or $r.Recipient -cne 'Ester' -or $r.Body -cne 'Oi!'){throw "Browser qualifier polluted contact/platform: $phrase -> $($r|ConvertTo-Json -Compress)"}
+ }
+ $script:messageContext=[pscustomobject]@{Recipient='Ester e eb do Chrome';Platform='WhatsApp Web';Body='voce entendeu errado, e para mandar mensagem para um contato chamado Ester.';Until=[datetime]::Now.AddMinutes(20)}
+ $r=Invoke-CoveMessageRequest 'voce entendeu errado, e para mandar mensagem para um contato chamado Ester' -DryRun
+ if($r.Action -or -not $r.AwaitReply -or $r.NextDialog.Stage -ne 'body' -or $r.Recipient -cne 'Ester' -or $r.Platform -cne 'WhatsApp Web' -or $r.Body){throw 'Correction was sent as message or switched to desktop'}
+ $script:messageDialog=$r.NextDialog
+ $r=Invoke-CoveMessageRequest 'e no WhatsApp Web' -DryRun
+ if($r.Action -or $r.Body -or $r.Platform -cne 'WhatsApp Web' -or $r.NextDialog.Stage -ne 'body'){throw 'Platform correction became message body'}
+ $script:messageDialog=$null
+ $script:messageContext=[pscustomobject]@{Recipient='Ester';Platform='WhatsApp Web';Body='Oi!';Until=[datetime]::Now.AddMinutes(20)}
+ $r=Invoke-CoveMessageRequest 'voce entendeu errado, o contato se chama Ester' -DryRun
+ if($r.Action -or $r.NextDialog.Stage -ne 'confirm' -or $r.Body -cne 'Oi!'){throw 'Correction automatically resent message'}
+ $script:messageDialog=$r.NextDialog
+ $desktopBefore=[CoveApp.Messaging]::Sends;$webBefore=[CoveApp.Messaging]::WebSends
+ $r=Invoke-CoveMessageRequest 'pode enviar'
+ if(-not $r.Task -or [CoveApp.Messaging]::Sends -ne $desktopBefore -or [CoveApp.Messaging]::WebSends -ne $webBefore+1){throw 'Corrected message did not use web controller'}
+ $r=Invoke-CoveMessageRequest 'mande mensagem para Ester no WhatsApp dizendo Oi!' -DryRun
+ if($r.Platform -cne 'WhatsApp Web'){throw 'Generic WhatsApp mention discarded explicit web context'}
+ $r=Invoke-CoveMessageRequest 'mande mensagem para Ester no WhatsApp Desktop dizendo Oi!' -DryRun
+ if($r.Platform -cne 'WhatsApp' -or $r.Recipient -cne 'Ester'){throw 'Explicit desktop override lost'}
+ $r=Invoke-CoveMessageRequest 'nao e no WhatsApp Desktop, e sim no WhatsApp Web' -DryRun
+ if($r.Platform -cne 'WhatsApp Web' -or $r.Action){throw 'Negated desktop selected instead of web correction'}
+ $script:messageDialog=$null
+ $before=[CoveApp.Messaging]::WebSends
+ foreach($phrase in @('manda outra mensagem para Ester no WhatsApp Web dizendo Segundo recado','envie mais uma mensagem para Ester no WhatsApp Web dizendo Segundo recado','manda de novo','tenta enviar novamente')){
+  $next=Invoke-CoveMessageRequest $phrase
+  if(-not $next.Task -or $next.Recipient -cne 'Ester' -or $next.Body -cne 'Segundo recado' -or $next.Platform -cne 'WhatsApp Web'){throw "Follow-up not executed locally: $phrase"}
+ }
+ if([CoveApp.Messaging]::WebSends -ne $before+4){throw 'Sequential explicit requests did not each start one controller task'}
+ 'OK: browser qualifiers, correction vs message body, exact contact, web context retained, explicit desktop override, sequential requests and explicit retries. All sends simulated.'
 }finally{$script:discordCancel.Dispose()}

@@ -43,6 +43,23 @@ try{
  if($ListenOnStart){$arguments+=' -ListenOnStart'}
  if($ShowDiscord){$arguments+=' -OpenDiscordSettings'}
  Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList $arguments -WorkingDirectory $PSScriptRoot -WindowStyle Hidden
+ if(-not $ListenOnStart -and -not $ShowDiscord){
+  if(-not ('CoveApp.RuntimeWindows' -as [type])){Add-Type -Path "$PSScriptRoot\CoveRuntimeWindows.cs"}
+  $until=[datetime]::UtcNow.AddSeconds(30)
+  do{
+   try{
+    $active=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'cove-runtime.json') -Raw -ErrorAction Stop|ConvertFrom-Json
+    if($active.Root -eq $PSScriptRoot -and $active.Build -eq $build -and [CoveApp.RuntimeWindows]::Handles($active.Pid,'Conversa com Cove').Length){
+     $show=[Threading.EventWaitHandle]::OpenExisting((Get-CoveChannelPrefix $PSScriptRoot)+'.Show')
+     try{$show.Set()|Out-Null}finally{$show.Dispose()}
+     Start-Sleep -Milliseconds 250
+     [CoveApp.RuntimeWindows]::RevealConversation($active.Pid)|Out-Null
+     break
+    }
+   }catch{}
+   Start-Sleep -Milliseconds 250
+  }while([datetime]::UtcNow -lt $until)
+ }
 }catch{
  Add-Type -AssemblyName PresentationFramework
  [Windows.MessageBox]::Show($_.Exception.GetBaseException().Message,'Cove - atualizar')|Out-Null

@@ -17,7 +17,7 @@ try{
    if((Get-Item -LiteralPath $part).Length -lt $minimum){throw ('Download incompleto: '+[IO.Path]::GetFileName($destination))}
    Move-Item -LiteralPath $part -Destination $destination -Force
   }
-  Write-Host 'Preparando Serena e Atlas: vozes neurais locais em portugues.' -ForegroundColor Cyan
+  Write-Host 'Preparando Serena, Atlas, Luna, Lia, Caio e Noah: perfis de voz locais.' -ForegroundColor Cyan
   Write-Host 'O download unico pode levar alguns minutos e usa algumas centenas de MB.'
   Write-Host 'Depois, a geracao da voz funciona sem enviar seus textos a outro servico.'
   $python=Join-Path $runtime 'python.exe'
@@ -45,13 +45,13 @@ try{
   Write-Host '[3/4] Baixando o modelo e as vozes...'
   Get-VoiceFile 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.onnx' (Join-Path $assets 'kokoro-v1.0.onnx') 100000000
   Get-VoiceFile 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin' (Join-Path $assets 'voices-v1.0.bin') 1000000
-  Write-Host '[4/4] Testando as duas vozes. Aguarde...'
+  Write-Host '[4/4] Testando os seis perfis de voz. Aguarde...'
   & $python -m py_compile (Join-Path $PSScriptRoot 'cove_neural.py')
   if($LASTEXITCODE -ne 0){throw 'O programa de voz nao passou na verificacao de sintaxe.'}
   & $python -u (Join-Path $PSScriptRoot 'cove_neural.py') --assets $assets --check
   if($LASTEXITCODE -ne 0){throw 'Os arquivos foram baixados, mas o teste de geracao de audio falhou.'}
-  [IO.File]::WriteAllText((Join-Path $assets 'ready.txt'),'kokoro-0.6.1;serena;atlas',[Text.Encoding]::ASCII)
-  Write-Host 'Pronto! Serena e Atlas estao disponiveis no Cove.' -ForegroundColor Green
+  [IO.File]::WriteAllText((Join-Path $assets 'ready.txt'),'kokoro-0.6.1;serena;atlas;luna;lia;caio;noah',[Text.Encoding]::ASCII)
+  Write-Host 'Pronto! Os seis perfis de voz estao disponiveis no Cove.' -ForegroundColor Green
  }finally{$installLock.Dispose()}
  exit 0
 }catch{

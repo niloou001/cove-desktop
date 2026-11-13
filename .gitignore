@@ -32,6 +32,10 @@ cove-runtime.json
 .cove-drafts/
 cove-action-status.json
 cove-identity.json
+cove-contact-aliases.json
+cove-shortcuts.json
 cove-online.json
 *.tmp
 *-test-*.json
+
+.cove-audit/

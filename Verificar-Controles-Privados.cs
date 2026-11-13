@@ -29,6 +29,20 @@ namespace CoveTests {
       AutomationElement field=null;var until=DateTime.UtcNow.AddSeconds(5);
       while(field==null&&DateTime.UtcNow<until){Thread.Sleep(100);args=new object[]{AutomationElement.FromHandle(handle),null};field=picker.Invoke(null,args) as AutomationElement;}
       if(field==null||args[1]==null)throw new Exception("Delayed editable combobox picker not found");
+      StackPanel quickLayout=null;GroupBox contactRow=null;
+      window.Dispatcher.Invoke(new Action(()=>{
+       group.Content=null;quickLayout=new StackPanel();quickLayout.Children.Add(combo);
+       contactRow=new GroupBox{Header="Resultado",Content=new TextBlock{Text="Bielvin"}};quickLayout.Children.Add(contactRow);group.Content=quickLayout;window.UpdateLayout();
+      }));
+      var quickPicker=(AutomationElement)args[1];
+      var results=CoveApp.DiscordCall.FindPrivateResults(quickPicker,"Bielvin");
+      if(results.Count!=1||results[0].Current.Name!="Bielvin")throw new Exception("Quick switch result without user marker not located at exact name");
+      window.Dispatcher.Invoke(new Action(()=>{quickLayout.Children.Add(new TextBlock{Text="Bielvin"});window.UpdateLayout();}));
+      if(CoveApp.DiscordCall.FindPrivateResults(quickPicker,"Bielvin").Count!=2)throw new Exception("Duplicate result names were collapsed into first wrapper");
+      window.Dispatcher.Invoke(new Action(()=>{quickLayout.Children.RemoveAt(2);window.UpdateLayout();}));
+      window.Dispatcher.Invoke(new Action(()=>{AutomationProperties.SetName(contactRow,"Bielvin group");window.UpdateLayout();}));
+      if(CoveApp.DiscordCall.FindPrivateResults(quickPicker,"Bielvin").Count!=0)throw new Exception("Group result accepted through its nested name");
+      window.Dispatcher.Invoke(new Action(()=>{AutomationProperties.SetName(contactRow,"Resultado");window.UpdateLayout();}));
       object value;if(!field.TryGetCurrentPattern(ValuePattern.Pattern,out value))throw new Exception("Fixture requires ValuePattern; keyboard must not be exercised");
       fill.Invoke(null,new object[]{field,"Ester"});
       if(((ValuePattern)value).Current.Value!="Ester")throw new Exception("Picker not filled");
@@ -46,6 +60,10 @@ namespace CoveTests {
       if((bool)header.Invoke(null,new object[]{root,"Ester"}))throw new Exception("Generic input accepted without private header evidence");
       window.Dispatcher.Invoke(new Action(()=>{var voice=new Button{Content="Start Voice Call"};toolbar.Items.Add(voice);}));
       if(!(bool)header.Invoke(null,new object[]{root,"Ester"}))throw new Exception("Generic input with verified private header rejected");
+      window.Dispatcher.Invoke(new Action(()=>AutomationProperties.SetName(composer,"Conversar em @ester_handle")));
+      if(!(bool)header.Invoke(null,new object[]{root,"Ester"}))throw new Exception("Display name and private username difference rejected");
+      if(CoveApp.Messaging.FindDiscordComposer(root,"Ester",false)!=null)throw new Exception("Different handle accepted without verified private header");
+      window.Dispatcher.Invoke(new Action(()=>AutomationProperties.SetName(composer,"Digite uma mensagem")));
       window.Dispatcher.Invoke(new Action(()=>AutomationProperties.SetHelpText(composer,"Search messages")));
       if((bool)header.Invoke(null,new object[]{root,"Ester"}))throw new Exception("Message search mistaken for composer");
       window.Dispatcher.Invoke(new Action(()=>{AutomationProperties.SetHelpText(composer,"");composer.Text="DRAFT-CANARY-DO-NOT-LOG";}));

@@ -14,7 +14,18 @@ namespace CoveApp {
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr window);
   [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr window,StringBuilder title,int count);
   [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
+  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr window);
+  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint from,uint to,bool attach);
+  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
   [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(DesktopPoint point);
+  [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr window,uint flags);
+  public static long WindowAtPoint(int x,int y){
+   using(new PhysicalCoordinates()){
+    var window=WindowFromPoint(new DesktopPoint(x,y));if(window==IntPtr.Zero)return 0;
+    var root=GetAncestor(window,2);return (root==IntPtr.Zero?window:root).ToInt64();
+   }
+  }
   [DllImport("user32.dll")] static extern bool IsWindow(IntPtr window);
   [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window,out uint process);
   [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window,int command);
@@ -51,7 +62,34 @@ namespace CoveApp {
   }
   static bool Near(DesktopPoint a,DesktopPoint b,int tolerance){return Math.Abs((long)a.X-b.X)<=tolerance&&Math.Abs((long)a.Y-b.Y)<=tolerance;}
   public static void CheckMouseCancel(CancellationToken token){token.ThrowIfCancellationRequested();if((GetAsyncKeyState(27)&0x8000)!=0)throw new OperationCanceledException("Movimento interrompido pela tecla Esc.");}
-  public static void RequireTargetForeground(){if(Target==0||GetForegroundWindow()!=new IntPtr(Target))throw new OperationCanceledException("A janela ativa mudou. Parei o mouse.");}
+  [ThreadStatic] static long recoverableWindow;
+  public sealed class RecoverWindowFocus : IDisposable {
+   readonly long previous;
+   public RecoverWindowFocus(long handle){if(handle==0)throw new ArgumentOutOfRangeException("handle");previous=recoverableWindow;recoverableWindow=handle;}
+   public void Dispose(){recoverableWindow=previous;}
+  }
+  public static void RequireTargetForeground(){
+   if(Target!=0&&GetForegroundWindow()==new IntPtr(Target))return;
+   if(recoverableWindow!=0&&Target==recoverableWindow){
+    RecoverForeground(recoverableWindow,()=>GetForegroundWindow().ToInt64(),()=>{
+     var window=new IntPtr(recoverableWindow);
+     if(!IsWindow(window))throw new OperationCanceledException("A janela do WhatsApp foi fechada.");
+     if(IsIconic(window))ShowWindow(window,9);
+     SetForegroundWindow(window);
+    },()=>CheckMouseCancel(CancellationToken.None));
+    return;
+   }
+   throw new OperationCanceledException("A janela ativa mudou. Parei o mouse.");
+  }
+  public static void RecoverForeground(long expected,Func<long> foreground,Action activate,Action check,int attempts=4,int settleMilliseconds=150){
+   if(expected==0||attempts<1||attempts>5||settleMilliseconds<0||settleMilliseconds>1000)throw new ArgumentOutOfRangeException();
+   for(int n=0;n<attempts;n++){
+    check();if(foreground()==expected)return;activate();
+    var until=DateTime.UtcNow.AddMilliseconds(settleMilliseconds);
+    do{check();if(foreground()==expected)return;if(DateTime.UtcNow>=until)break;Thread.Sleep(25);}while(true);
+   }
+   throw new OperationCanceledException("O Windows nao permitiu recuperar a janela de destino apos novas tentativas. Nada foi clicado na outra janela.");
+  }
   public static void PrepareTargetMouse(){Activate();}
   public static void MoveSmooth(int x,int y,CancellationToken token){
    if(!OnDisplay(x,y,Displays()))throw new Exception("O alvo nao esta em um monitor conectado.");
@@ -77,7 +115,16 @@ namespace CoveApp {
    GetWindowThreadProcessId(window,out pid);
    if(pid==(uint)System.Diagnostics.Process.GetCurrentProcess().Id)throw new Exception("Escolha uma janela de outro aplicativo.");
    if(IsIconic(window))ShowWindow(window,9);
-   if(GetForegroundWindow()!=window&&!SetForegroundWindow(window))throw new Exception("O Windows impediu a ativacao do Discord.");
+   RecoverForeground(handle,()=>GetForegroundWindow().ToInt64(),()=>{
+    if(!IsWindow(window))throw new OperationCanceledException("A janela de destino foi fechada.");
+    if(IsIconic(window))ShowWindow(window,9);
+    uint owner;uint foregroundThread=GetWindowThreadProcessId(GetForegroundWindow(),out owner),currentThread=GetCurrentThreadId();
+    bool attached=false;
+    try{
+     if(foregroundThread!=0&&foregroundThread!=currentThread)attached=AttachThreadInput(currentThread,foregroundThread,true);
+     BringWindowToTop(window);SetForegroundWindow(window);
+    }finally{if(attached)AttachThreadInput(currentThread,foregroundThread,false);}
+   },()=>CheckMouseCancel(CancellationToken.None),5,250);
    Target=handle;
   }
   static string Title(IntPtr window){var s=new StringBuilder(1024);GetWindowText(window,s,s.Capacity);return s.ToString();}

@@ -1,5 +1,9 @@
 ﻿$ErrorActionPreference='Stop'
 . "$PSScriptRoot\CoveApps.ps1"
+. "$PSScriptRoot\CoveShortcuts.ps1"
+. "$PSScriptRoot\CoveMessages.ps1"
+. "$PSScriptRoot\CoveMessagePlanner.ps1"
+function Write-CoveActionTrace {}
 . "$PSScriptRoot\CoveDiscord.ps1"
 . "$PSScriptRoot\CoveControl.ps1"
 . "$PSScriptRoot\CoveFiles.ps1"
@@ -14,7 +18,7 @@ $script:voiceEngine=New-Object psobject
 $script:voiceEngine|Add-Member ScriptMethod Stop {}
 $script:account=[pscustomobject]@{Connected=$true;TextDeltas=(New-Object 'Collections.Concurrent.ConcurrentQueue[string]')}
 $script:account|Add-Member ScriptMethod Ask {$script:aiCalls++;throw 'Discord action incorrectly reached the chat model.'}
-$script:chat=New-Object psobject
+$script:chat=[pscustomobject]@{Topmost=$false}
 $script:chat|Add-Member ScriptMethod Show {}
 $script:sendButton=[pscustomobject]@{IsEnabled=$true}
 $script:mode='chatgpt';$script:aiCalls=0

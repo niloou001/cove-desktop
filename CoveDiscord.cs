@@ -101,7 +101,7 @@ namespace CoveApp {
   static bool HitTarget(AutomationElement element,System.Windows.Point point){
    var hit=AutomationElement.FromPoint(point);
    if(hit==null||hit.Current.ProcessId!=element.Current.ProcessId)return false;
-   for(int n=0;n<10&&hit!=null;n++){if(Automation.Compare(hit,element))return true;hit=TreeWalker.ControlViewWalker.GetParent(hit);}return false;
+   return Messaging.CanClickElementAt(element,hit,Computer.WindowAtPoint((int)Math.Round(point.X),(int)Math.Round(point.Y)),Computer.Target);
   }
   static bool ClickWithMouse(AutomationElement element){
    CheckMouseInterference();if(!mouseOwnsTarget){Computer.PrepareTargetMouse();mouseOwnsTarget=true;}object pattern;
@@ -293,6 +293,39 @@ namespace CoveApp {
    return ExactName(label,friend)&&Regex.IsMatch(metadata??"",@"\b(user|usuario|usuário|direct message|mensagem direta|mensagens diretas)\b",RegexOptions.IgnoreCase)&&!Regex.IsMatch(metadata??"",@"\b(server|servidor|group|grupo)\b",RegexOptions.IgnoreCase);
   }
   public static bool IsPrivateVoiceButton(string label){return Regex.IsMatch(label??"",@"^(Start Voice Call|Start voice call|Iniciar chamada de voz|Iniciar chamada por voz|Chamada de voz)$",RegexOptions.IgnoreCase);}
+  public static bool PrivateCandidate(string label,string[] details,string metadata,string friend){
+   if(Regex.IsMatch(metadata??"",@"\b(server|servidor|group|grupo|canal|channel)\b",RegexOptions.IgnoreCase))return false;
+   if(ExactName(label,friend))return true;
+   // Quick Switcher can expose a combined accessible label and separate name
+   // text, without the literal word user. Navigation is verified again by the
+   // private conversation header before any message can be written.
+   foreach(string detail in details)if(ExactName(detail,friend))return true;
+   return false;
+  }
+  public static List<AutomationElement> FindPrivateResults(AutomationElement picker,string friend){
+   var matches=new List<AutomationElement>();
+   var kinds=new OrCondition(new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.ListItem),new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.DataItem),new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Button),new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Group),new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Custom),new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Text));
+   foreach(AutomationElement item in picker.FindAll(TreeScope.Descendants,kinds)){
+    if(item.Current.IsOffscreen||!item.Current.IsEnabled)continue;
+    var bounds=item.Current.BoundingRectangle;if(bounds.IsEmpty||bounds.Height>120)continue;
+    bool input=false;foreach(AutomationElement field in item.FindAll(TreeScope.Descendants,new OrCondition(new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Edit),new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.ComboBox)))){input=true;break;}if(input)continue;
+    var details=Details(item);string metadata=String.Join(" ",details)+" "+item.Current.HelpText+" "+item.Current.ItemType;
+    if(!PrivateCandidate(item.Current.Name,details,metadata,friend))continue;
+    bool excluded=false;var ancestor=TreeWalker.ControlViewWalker.GetParent(item);
+    for(int depth=0;depth<8&&ancestor!=null&&!Automation.Compare(ancestor,picker);depth++,ancestor=TreeWalker.ControlViewWalker.GetParent(ancestor)){
+     if(ancestor.Current.BoundingRectangle.Height>120)break;
+     if(Regex.IsMatch((ancestor.Current.Name??"")+" "+ancestor.Current.HelpText+" "+ancestor.Current.ItemType,@"\b(server|servidor|group|grupo|canal|channel)\b",RegexOptions.IgnoreCase)){excluded=true;break;}
+    }
+    if(excluded)continue;
+    bool contained=false;
+    for(int i=matches.Count-1;i>=0;i--){
+     if(Inside(item,matches[i])){contained=true;break;}
+     if(Inside(matches[i],item))matches.RemoveAt(i);
+    }
+    if(!contained)matches.Add(item);
+   }return matches;
+  }
+  static bool Inside(AutomationElement parent,AutomationElement child){for(int n=0;n<20&&child!=null;n++,child=TreeWalker.ControlViewWalker.GetParent(child))if(Automation.Compare(parent,child))return true;return false;}
   public static bool IsPickerMarker(string name,string id){return Regex.IsMatch((name??"")+" "+(id??""),@"quick.?switch|seletor r[aá]pido|alternador r[aá]pido|navega[cç][aã]o r[aá]pida",RegexOptions.IgnoreCase);}
   public static bool IsPickerSearchName(string name){return Regex.IsMatch(name??"",@"where would you like to go|para onde (?:voc[eê] (?:quer|gostaria de) |quer |gostaria de )?ir|search|pesquis|buscar",RegexOptions.IgnoreCase);}
   static AutomationElement PickerAncestor(AutomationElement field,AutomationElement root){
@@ -353,13 +386,10 @@ namespace CoveApp {
       if(field==null)throw new Exception("O Discord nao abriu uma busca de conversas acessivel. Nada foi enviado nem foi iniciada uma ligacao.");
       FillPicker(field,friend);Pause(token,250);
       stage="selecionar amigo";
-      bool selected=false;until=DateTime.UtcNow.AddSeconds(5);
+      bool selected=false;until=DateTime.UtcNow.AddSeconds(12);
       while(DateTime.UtcNow<until&&!selected){
-       root=Root();field=PickerField(root,out picker);if(picker==null){Pause(token,150);continue;}var matches=new List<AutomationElement>();
-       foreach(AutomationElement item in picker.FindAll(TreeScope.Descendants,new OrCondition(new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.ListItem),new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.DataItem)))){
-        if(item.Current.IsOffscreen)continue;string metadata=String.Join(" ",Details(item))+" "+item.Current.HelpText+" "+item.Current.ItemType;
-        if(IsPrivateResult(item.Current.Name,metadata,friend))matches.Add(item);
-       }
+       root=Root();field=PickerField(root,out picker);if(picker==null){if(root!=null&&PrivateHeader(root,friend)){selected=true;break;}Pause(token,150);continue;}
+       var matches=FindPrivateResults(picker,friend);
        if(matches.Count>1)throw new Exception("Ha mais de um amigo com esse nome. Diga o nome de usuario completo.");
        if(matches.Count==1)selected=Invoke(matches[0]);if(!selected)Pause(token,150);
       }
@@ -426,8 +456,22 @@ namespace CoveApp {
     if(element.Current.ControlType==ControlType.ToolBar||Regex.IsMatch(element.Current.Name??"",@"^(Channel header|Chat header|Conversation header|Cabe[cç]alho (?:do canal|da conversa))$",RegexOptions.IgnoreCase)||Regex.IsMatch(element.Current.AutomationId??"",@"^(channel-header|chat-header|conversation-header)(?:$|[-_])",RegexOptions.IgnoreCase))yield return element;
    }
   }
-  public static Task<string> Join(string url,string server,string channel,CancellationToken token){return JoinInternal(url,server,channel,token,false);}
-  public static Task<string> JoinMouse(string url,string server,string channel,CancellationToken token){return JoinInternal(url,server,channel,token,true);}
+  public static Task<string> Join(string url,string server,string channel,CancellationToken token){return JoinWithRecovery(url,server,channel,token,false);}
+  public static Task<string> JoinMouse(string url,string server,string channel,CancellationToken token){return JoinWithRecovery(url,server,channel,token,true);}
+  static bool RecoverableNavigation(string message){
+   return Regex.IsMatch(message??"",@"nao consegui (?:localizar|confirmar|concluir)|interface do Discord mudou|lista de servidores.*mudando|Acionei a call",RegexOptions.IgnoreCase);
+  }
+  static async Task<string> JoinWithRecovery(string url,string server,string channel,CancellationToken token,bool useMouse){
+   try{
+    string result=await JoinInternal(url,server,channel,token,useMouse).ConfigureAwait(false);
+    if(!RecoverableNavigation(result))return result;
+   }catch(OperationCanceledException){throw;}
+   catch(Exception error){if(!RecoverableNavigation(error.Message))throw;}
+   // Reacquire the Discord view and verify the same destination using the other
+   // input method. Cancellation or ambiguous destinations never trigger a retry.
+   token.ThrowIfCancellationRequested();
+   return await JoinInternal(url,server,channel,token,!useMouse).ConfigureAwait(false);
+  }
   static Task<string> JoinInternal(string url,string server,string channel,CancellationToken token,bool useMouse){
    return Task.Run(()=>{
     using(IDisposable session=useMouse?BeginMouseNavigation(token):null){

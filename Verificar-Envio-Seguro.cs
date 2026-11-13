@@ -2,6 +2,15 @@ using System;using CoveApp;
 namespace CoveTests {
  public static class MessageWorkflow {
   public static string Run(){
+   bool fieldFocused=false;string unfocusedDraft="";int focusFirstSends=0;
+   Messaging.PrepareAndSend("Focus first",()=>true,()=>{if(!fieldFocused)throw new InvalidOperationException("No text until focus");return unfocusedDraft;},()=>fieldFocused=true,value=>unfocusedDraft=value,()=>{},()=>focusFirstSends++);
+   if(focusFirstSends!=1||unfocusedDraft!="Focus first")throw new Exception("Unselected field must be focused before reading or writing");
+   int controlReads=0;
+   string recovered=Messaging.AwaitControl(()=>{controlReads++;if(controlReads==1)throw new System.Windows.Automation.ElementNotAvailableException();if(controlReads==2)throw new System.Runtime.InteropServices.COMException();return "fresh";},()=>{},1000);
+   if(recovered!="fresh"||controlReads!=3)throw new Exception("Recreated controls were not retried");
+   bool controlCancelled=false;
+   try{Messaging.AwaitControl<string>(()=>{throw new OperationCanceledException();},()=>{},1000);}catch(OperationCanceledException){controlCancelled=true;}
+   if(!controlCancelled)throw new Exception("Recovery swallowed cancellation");
    string draft="";int sends=0,writes=0,checks=0;bool recipient=true;
    Action focus=()=>{};Action check=()=>{checks++;};
    Action<string> write=text=>{draft=text;writes++;};Action send=()=>{sends++;};

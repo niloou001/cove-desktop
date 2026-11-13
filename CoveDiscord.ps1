@@ -3,13 +3,14 @@
 $script:discordDialog=$null
 function ConvertTo-CoveDiscordDestination([string]$name){
  $name=$name.Trim().TrimEnd([char[]]',;.!?')
+ $name=$name -replace '(?i)\s+(?:no|do|pelo|em)\s+(?:discord|dicord|discorde|disco|dc)\s*$',''
  $name=$name -replace '(?i)^(?:chamad[oa]|que se chama|(?:com\s+)?o nome(?: de)?|de nome)\s+',''
  return $name.Trim().Trim([char[]]'"''')
 }
 function Test-CoveDiscordActionRequest([string]$text){
  $words=ConvertTo-CoveAppName (ConvertTo-CoveRequestLanguage $text)
  if($words -match '^(nao|como|por que|o site|ele disse|me explica|explique|explica|saber|entender|se|caso)\b' -or $words -match '\bnao\s+(?:(?:quero|queria|pode|preciso)\s+)?(?:entrar|entra|entre|conectar|conecta|colocar|coloca|botar|bota)\b'){return $false}
- $domain=$words -match '\b(call|cal|cau|chamada|canal de voz|servidor|discord|discorde|dsicrod|dsicord|dc)\b'
+ $domain=$words -match '\b(call|cal|cau|chamada|canal de voz|servidor|discord|dicord|discorde|dsicrod|dsicord|dc)\b'
  if(-not $domain -and $words -match '^(?:me )?(entra|entrar|entre|conecta|coloca|bota) (na|no) (?:a |o )?(geral|lounge)$'){$domain=$true}
  $action=$words -match '^(?:(?:me|nos) )?(entr\w*|conect\w*|coloc\w*|bot\w*|lev\w*|deix\w*|acess\w*|junt\w*|tent\w*|poe|ponha|vamos|bora|vai|ir|manda|mande|ajuda|ajude|ajudar|faz|faca|seria possivel)\b'
  if(-not $action -and $words -match '^(abre|abrir|abra|inicia|iniciar)\b.*\b(entrar|entra|entre|conectar|conecta|coloca|bota)\b'){$action=$true}
@@ -42,7 +43,7 @@ function Get-CoveDiscordRequest([string]$text,$Dialog=$script:discordDialog){
  if($Dialog -and $text -match '(?i)^\s*(?:pode ser|vai ser)\s+(.+)$'){$text=$Matches[1]}
  $text=ConvertTo-CoveRequestLanguage $text
  $text=$text -replace '(?i)(\b(?:na|uma|nessa|em|a)\s+)(?:cal|cau)\b','$1call'
- $text=$text -replace '(?i)(\b(?:do|no)\s+)(?:disco|discorde|dsicrod|dsicord|dc)\b','$1Discord'
+ $text=$text -replace '(?i)(\b(?:do|no)\s+)(?:disco|dicord|discorde|dsicrod|dsicord|dc)\b','$1Discord'
  $command=ConvertTo-CoveAppName $text
  if($command -match '^(nao|como|por que|o site|ele disse)\b'){return $result}
  # Private voice calls are explicit actions, separate from guild destinations.
@@ -113,6 +114,12 @@ function Get-CoveDiscordRequest([string]$text,$Dialog=$script:discordDialog){
  if(-not $matched){return $result}
  $server=ConvertTo-CoveDiscordDestination $server
  $channel=ConvertTo-CoveDiscordDestination $channel
+ # Recover independent slots even when a broad sentence pattern matched first.
+ if(Test-CoveDiscordActionRequest $text){
+  $free=Get-CoveDiscordFreeDestination $text
+  if(-not $server -and $free.Server){$server=ConvertTo-CoveDiscordDestination $free.Server}
+  if(-not $channel -and $free.Channel){$channel=ConvertTo-CoveDiscordDestination $free.Channel}
+ }
  # A fuller follow-up may contain an action verb; retain slots already supplied.
  if($Dialog){
   if(-not $server){$server=[string]$Dialog.Server}

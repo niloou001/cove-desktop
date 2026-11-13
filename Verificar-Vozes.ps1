@@ -8,6 +8,7 @@ Add-Type -Path @((Join-Path $PSScriptRoot 'CoveVoice.cs'),(Join-Path $PSScriptRo
 $voices=@([CoveApp.CoveSpeech]::Voices())
 if(@($voices|Where-Object{$_.Id -eq 'kokoro:serena' -and $_.Gender -eq 'Female'}).Count -ne 1){throw 'Perfil Serena ausente.'}
 if(@($voices|Where-Object{$_.Id -eq 'kokoro:atlas' -and $_.Gender -eq 'Male'}).Count -ne 1){throw 'Perfil Atlas ausente.'}
+foreach($preset in @('luna','lia','caio','noah')){if(@($voices|Where-Object{$_.Id -eq ('kokoro:'+$preset)}).Count -ne 1){throw ('Novo perfil ausente: '+$preset)}}
 function Expect-Failure([scriptblock]$code){$failed=$false;try{& $code}catch{$failed=$true};if(-not $failed){throw 'Resposta de audio invalida foi aceita.'}}
 Expect-Failure {[CoveApp.CoveSpeech]::DecodeAudio('{"error":"test"}')}
 Expect-Failure {[CoveApp.CoveSpeech]::DecodeAudio('{"audio":"AAAA"}')}

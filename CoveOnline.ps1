@@ -21,6 +21,7 @@ function Get-CoveChromePath {
 function Get-CoveOnlineRequest([string]$Text){
  $text=ConvertTo-CoveRequestLanguage $Text;$key=ConvertTo-CoveAppName $text
  $result=[pscustomobject]@{Handled=$false;Message='';Task=$null;AwaitReply=$false;Kind='';Query='';City='';Url=''}
+ if([datetime]::Now -lt $script:onlineCityUntil -and $key -match '^(cancela|cancelar|cancele|deixa pra la|esquece|nao quero)$'){$result.Handled=$true;$result.Kind='cancelCity';return $result}
  if($key -match '^(nao|como pesquisar|como buscar|como ligar|me explica|explique|ele disse|o site disse)\b'){return $result}
  if($text -match '(?i)^(?:minha cidade (?:e|é)|(?:defina|definir|salve|salvar|mude|mudar) (?:a )?cidade(?: para)?)\s+(.+)$'){$result.Kind='city';$result.City=$Matches[1].Trim()}
  elseif($key -match '^(que horas(?: sao| e)?(?: agora)?|qual (?:e )?(?:o )?horario(?: agora| atual)?|me (?:diga|diz|dizer|fala|fale|falar) (?:as horas|o horario|que horas sao)|hora atual)$'){$result.Kind='time'}
@@ -31,7 +32,7 @@ function Get-CoveOnlineRequest([string]$Text){
  elseif($key -match '\b(temperatura|quantos graus|como esta o tempo|como ta o tempo|como esta o clima)\b' -and $key -notmatch '^(explique|o que|como funciona|me explica)\b'){
   $result.Kind='weather'
   if($text -match '(?i)\b(?:em|de)\s+(.+?)(?:\s+(?:agora|hoje))?[?!.]*$'){$result.City=$Matches[1].Trim()}else{$result.City=Get-CoveWeatherCity}
- }elseif([datetime]::Now -lt $script:onlineCityUntil -and $text.Length -le 120 -and $key -notmatch '^(abre|abra|entre|entra|liga|ligue|cancela|cancelar|quem|qual|como|que|pesquisa)\b'){$result.Kind='weatherCity';$result.City=$text}
+ }elseif([datetime]::Now -lt $script:onlineCityUntil -and $text.Length -le 120 -and $key -notmatch '^(abre|abra|entre|entra|liga|ligue|cancela|cancelar|obrigado|obrigada|valeu|oi|ola|tudo bem|quem|qual|como|que|pesquisa)\b'){$result.Kind='weatherCity';$result.City=$text}
  if(-not $result.Kind){return $result}
  $result.Handled=$true
  if($result.Kind -eq 'search'){
@@ -44,6 +45,7 @@ function Invoke-CoveOnlineRequest([string]$Text,[switch]$DryRun){
  $result=Get-CoveOnlineRequest $Text
  if(-not $result.Handled){return $result}
  switch($result.Kind){
+  'cancelCity' {if(-not $DryRun){$script:onlineCityUntil=[datetime]::MinValue};$result.Message='Consulta de temperatura cancelada.'}
   'time' {$result.Message='Agora sao '+(Get-Date -Format 'HH:mm')+'. Horario do computador.'}
   'date' {$result.Message='Hoje e '+[datetime]::Now.ToString('dddd, dd \de MMMM \de yyyy',[Globalization.CultureInfo]::GetCultureInfo('pt-BR'))+'.'}
   'city' {if(-not $DryRun){Set-CoveWeatherCity $result.City};$result.Message='Cidade para temperatura: '+$result.City+'.'}
